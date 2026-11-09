@@ -263,8 +263,9 @@ function headShades(p: Pose): Int8Array {
  *   TANK  base undershirt pixels       SHORTS base shorts pixels
  *   ARM   skin connected to the shoulders (arms + hands, incl. hands crossing the hips)
  *   LEG   skin of the legs              FOOT the lowest 3 leg pixels per column
+ *   TORSO_SKIN bare skin between the undershirt straps (upper chest/back) — covered by every top
  */
-const C = { NONE: 0, OUTLINE: 1, TANK: 2, SHORTS: 3, ARM: 4, HAND: 5, LEG: 6, FOOT: 7 } as const;
+const C = { NONE: 0, OUTLINE: 1, TANK: 2, SHORTS: 3, ARM: 4, HAND: 5, LEG: 6, FOOT: 7, TORSO_SKIN: 8 } as const;
 const BASE_GREYS = [FIXED_COLORS.base0, FIXED_COLORS.base1, FIXED_COLORS.base2, FIXED_COLORS.base3] as string[];
 const HIP_LINE: Record<SheetDir, number> = { down: 52, up: 52, left: 54 };
 interface Classes { cls: Uint8Array; shade: Int8Array }
@@ -313,7 +314,10 @@ function classes(p: Pose): Classes {
     const minY = Math.min(...comp.map((i) => (i / FRAME_W) | 0));
     const maxY = Math.max(...comp.map((i) => (i / FRAME_W) | 0));
     const isArm = minY < hip - 2;
-    for (const i of comp) cls[i] = isArm ? (((i / FRAME_W) | 0) >= maxY - 2 ? C.HAND : C.ARM) : C.LEG;
+    const xs = comp.map((i) => i % FRAME_W);
+    const betweenStraps = p.dir !== "left" && Math.min(...xs) >= 11 && Math.max(...xs) <= 20;
+    for (const i of comp)
+      cls[i] = !isArm ? C.LEG : betweenStraps ? C.TORSO_SKIN : ((i / FRAME_W) | 0) >= maxY - 2 ? C.HAND : C.ARM;
   }
   // feet: lowest 3 leg pixels of each column
   for (let x = 0; x < FRAME_W; x++) {
@@ -403,30 +407,28 @@ const drawers: Record<string, Drawer> = {
 
   // ── outerwear ──
   "outerwear/outer_hoodie_01.png": (f) => {
-    const { p } = f;
-    const t = p.torso;
+    // body + sleeves recolored; the hood is the top rows of the garment one shade darker (it folds behind
+    // the neck), drawstrings are two accent pixels — all inside the reference silhouette
+    const y0 = 45 + f.p.m.bodyDy;
     jacket(f);
     if (f.dir === "down") {
-      f.reg("primary").round(p.head.x + 4, p.head.y + p.head.h - 3, p.head.w - 8, 4, 1);
-      f.dot(t.x + 5, t.y + 3, KEY_RAMPS.secondary[3]);
-      f.dot(t.x + 5, t.y + 4, KEY_RAMPS.secondary[2]);
-      f.dot(t.x + 8, t.y + 3, KEY_RAMPS.secondary[3]);
-      f.dot(t.x + 8, t.y + 4, KEY_RAMPS.secondary[2]);
+      f.recolor("primary", (c, _x, y) => (isTorso(c) || c === C.ARM) && y <= y0 + 2, 1);
+      f.recolor("secondary", (c, x, y) => isTorso(c) && (x === 14 || x === 17) && y >= y0 + 3 && y <= y0 + 5);
     } else if (f.dir === "up") {
-      f.reg("primary").round(t.x + 2, t.y - 1, t.w - 4, 6, 2);
+      f.recolor("primary", (c, x, y) => isTorso(c) && y <= y0 + 5 && x >= 12 && x <= 19, 1);
     } else {
-      f.reg("primary").round(t.x + 4, t.y - 2, 6, 6, 1);
+      f.recolor("primary", (c, x, y) => (isTorso(c) || c === C.ARM) && y <= y0 + 3 && x >= 15, 1);
     }
   },
   "outerwear/outer_blazer_01.png": (f) => {
-    const t = f.p.torso;
+    // open jacket: the shirt shows in a V down the front
+    const y0 = 45 + f.p.m.bodyDy;
     jacket(f);
     if (f.dir === "down") {
-      const v = f.reg("secondary");
-      for (let i = 0; i < 6; i++) v.rect(t.x + 5 + Math.floor(i / 2), t.y + 1 + i, 4 - 2 * Math.floor(i / 2), 1);
-      f.dot(t.x + 6, t.y + 8, BLACK);
+      f.recolor("secondary", (c, x, y) => isTorso(c) && y >= y0 + 1 && y <= y0 + 7 && Math.abs(x + 0.5 - 16) <= Math.max(0, 3 - Math.floor((y - y0 - 1) / 2)));
+      f.recolor("primary", (c, x, y) => isTorso(c) && x === 15 && y === y0 + 8, 2); // button
     } else if (f.dir === "left") {
-      f.reg("secondary").rect(t.x, t.y + 1, 3, 4);
+      f.recolor("secondary", (c, x, y) => isTorso(c) && x <= 13 && y <= y0 + 5);
     }
   },
 
@@ -434,12 +436,25 @@ const drawers: Record<string, Drawer> = {
   "bottom/bottom_pants_01.png": (f) => legsWear(f, 99),
   "bottom/bottom_shorts_01.png": (f) => legsWear(f, 3),
   "bottom/bottom_skirt_01.png": (f) => {
-    const hip = f.p.hip;
+    // shorts recolored + a flare drawn around them (never over hands/arms)
+    const { cls } = classes(f.p);
+    let top = FRAME_H, bottom = 0, left = FRAME_W, right = 0;
+    for (let y = 0; y < FRAME_H; y++)
+      for (let x = 0; x < FRAME_W; x++)
+        if (cls[y * FRAME_W + x] === C.SHORTS) {
+          top = Math.min(top, y); bottom = Math.max(bottom, y); left = Math.min(left, x); right = Math.max(right, x);
+        }
+    if (top > bottom) return;
     const r = f.reg("primary");
-    for (let i = 0; i < 7; i++) {
-      const spread = Math.floor(i / 3);
-      r.rect(hip.x - spread, hip.y + i, hip.w + spread * 2, 1);
+    for (let y = top - 1; y <= bottom + 2; y++) {
+      const spread = Math.max(0, Math.floor((y - top) / 3));
+      r.rect(left - spread, y, right - left + 1 + spread * 2, 1);
     }
+    for (let y = 0; y < FRAME_H; y++)
+      for (let x = 0; x < FRAME_W; x++) {
+        const c = cls[y * FRAME_W + x]!;
+        if (c === C.HAND || c === C.ARM || c === C.TORSO_SKIN || c === C.TANK) r.px(x, y, false);
+      }
   },
 
   // ── shoes ──
@@ -521,15 +536,17 @@ function hairCap(f: Frame, sideLen: number) {
   const { p } = f;
   const h = p.head;
   const r = f.headReg("primary");
+  const headBottom = HEAD_BOTTOM[f.dir] + p.m.headDy;
   if (f.dir === "down") {
     fromHead(r, p, (x, y) => y <= h.y + 7 || (y <= h.y + 6 + sideLen && (x <= h.x + 3 || x >= h.x + h.w - 4)));
     r.rect(h.x + 4, h.y + 8, 6, 1).rect(h.x + 4, h.y + 9, 3, 1); // swept fringe
   } else if (f.dir === "up") {
-    // back of the head: cover down to the nape, leave the ears as skin
-    const nape = h.y + 13 + Math.max(0, sideLen - 5);
-    fromHead(r, p, (x, y) => y <= h.y + 8 || (y <= nape && x >= h.x + 2 && x <= h.x + h.w - 3));
+    // the whole back of the head is hair, down to the nape; only the ears stay skin
+    const isEar = (x: number, y: number) => (x <= h.x + 1 || x >= h.x + h.w - 2) && y >= h.y + 9 && y <= h.y + 12;
+    fromHead(r, p, (x, y) => y <= headBottom + 2 && !isEar(x, y)); // +2: covers the nape down to the collar
   } else {
-    fromHead(r, p, (x, y) => y <= h.y + 7 || (x >= h.x + 9 && y <= h.y + 6 + Math.max(6, sideLen)));
+    // top + the whole back half of the head down to the nape
+    fromHead(r, p, (x, y) => y <= h.y + 7 || (x >= h.x + 9 && y <= headBottom) || (x >= h.x + 7 && y <= h.y + 6 + Math.max(6, sideLen)));
     r.rect(h.x + 1, h.y + 8, 4, 1); // fringe tip
   }
 }
@@ -539,14 +556,16 @@ function hairCap(f: Frame, sideLen: number) {
 
 const isFrontBack = (f: Frame) => f.dir !== "left";
 
+const isTorso = (c: number) => c === C.TANK || c === C.TORSO_SKIN;
+
 function shirt(f: Frame, sleeveRows: number, collar: boolean) {
   const y0 = 45 + f.p.m.bodyDy;
-  f.recolor("primary", (c, _x, y) => c === C.TANK || (c === C.ARM && y < y0 + sleeveRows));
+  f.recolor("primary", (c, _x, y) => isTorso(c) || (c === C.ARM && y < y0 + sleeveRows));
   if (collar && f.dir === "down") f.recolor("secondary", (c, x, y) => c === C.TANK && y <= y0 + 2 && x >= 13 && x <= 18);
 }
 
 function jacket(f: Frame) {
-  f.recolor("primary", (c) => c === C.TANK || c === C.ARM);
+  f.recolor("primary", (c) => isTorso(c) || c === C.ARM);
 }
 
 function legsWear(f: Frame, len: number) {
