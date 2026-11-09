@@ -537,14 +537,16 @@ function hairDetail(f: Frame, r: Region) {
 /**
  * Exactly the ear pixels of the reference head — hair leaves only these uncovered.
  *   front/back: the bump outside the oval + its inner shade line → cols 6–8 / 23–25, rows 38–42
- *   side:       the ear ring → cols 18–20, rows 39–43 (+ its lower-left corner)
+ *   side:       13 px — cols 18–19 on rows 39 & 43, cols 18–20 on rows 40–42
  */
 function isEar(f: Frame, x: number, y: number): boolean {
   const h = f.p.head;
   const ry = y - h.y; // row relative to the head top (29)
   if (f.dir === "left") {
+    // 13 px, same shape as the reference ear: 2 / 3 / 3 / 3 / 2 rows (dark edge toward the hair)
     const rx = x - h.x; // col relative to the head left (8)
-    return (rx >= 10 && rx <= 12 && ry >= 10 && ry <= 14) || (rx === 9 && ry === 14);
+    if (ry === 10 || ry === 14) return rx >= 10 && rx <= 11;
+    return ry >= 11 && ry <= 13 && rx >= 10 && rx <= 12;
   }
   return (x <= h.x + 2 || x >= h.x + h.w - 3) && ry >= 9 && ry <= 13;
 }
