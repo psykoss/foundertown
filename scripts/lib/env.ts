@@ -3,7 +3,9 @@ export const TERRAIN = {
   grass0: 0, grass1: 1, grass2: 2, path: 3, wood: 4, carpet: 5, tileFloor: 6, water: 7,
   wallTop: 8, wallFace: 9, wallWindow: 10, collision: 11, doormat: 12, wallFaceLow: 13, hedge: 14, sand: 15,
   // floor textures from the prop library (art/props/floors)
-  floorYellow: 16, floorBath: 17, floorConcrete: 18, floorHerringbone: 19, floorRed: 20,
+  floorYellow: 16,
+  // thin walls: horizontal = 1 row (8px cap on top of the face), vertical = 8px band down the tile center
+  wallH: 17, wallHWindow: 18, wallV: 19, wallBottom: 20, wallLeft: 21, wallRight: 22,
 } as const;
 export const TERRAIN_COLUMNS = 8;
 export const TERRAIN_COUNT = 24;

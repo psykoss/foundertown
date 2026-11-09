@@ -53,45 +53,58 @@ const block = (x: number, y: number, w = 1, h = 1) => fill(collision, x, y, w, h
 // ── floors ──
 fill(ground, 0, 0, W, H, TERRAIN.wood); // cream brick (office default)
 fill(ground, 2, 4, 17, 10, TERRAIN.carpet); // desk area (lavender carpet, like the reference office)
-fill(ground, 21, 3, 12, 9, TERRAIN.floorYellow); // kitchen
+fill(ground, 21, 3, 12, 11, TERRAIN.floorYellow); // kitchen
 fill(ground, 21, 15, 12, 11, TERRAIN.carpet); // library
 fill(ground, 1, 19, 9, 7, TERRAIN.carpet); // lounge
 // meeting room: cream brick
 
 // ── walls ──
-/** Horizontal wall: cap at y, faces at y+1 (with window/face) and y+2 (baseboard); gaps = door columns. */
+/**
+ * Thin walls (reference style).
+ * Horizontal wall (args keep the old 3-row band y..y+2): drawn as ONE row at y+2 — face with an 8px cap on
+ * top; rows y and y+1 become floor of the room above. Vertical wall: 8px band down the tile center.
+ */
 function hwall(y: number, x1: number, x2: number, gaps: number[] = [], windows: number[] = []) {
   for (let x = x1; x <= x2; x++) {
     if (gaps.includes(x)) continue;
-    set(walls, x, y, TERRAIN.wallTop);
-    set(walls, x, y + 1, windows.includes(x) ? TERRAIN.wallWindow : TERRAIN.wallFace);
-    set(walls, x, y + 2, TERRAIN.wallFaceLow);
-    block(x, y, 1, 3);
+    set(walls, x, y + 2, windows.includes(x) ? TERRAIN.wallHWindow : TERRAIN.wallH);
+    block(x, y + 2);
   }
 }
-/** Vertical wall: cap column; gaps = door rows. */
 function vwall(x: number, y1: number, y2: number, gaps: number[] = []) {
   for (let y = y1; y <= y2; y++) {
     if (gaps.includes(y)) {
-      clear(walls, x, y);
       clear(collision, x, y);
       continue;
     }
-    set(walls, x, y, TERRAIN.wallTop);
+    if (!walls[y * W + x]) set(walls, x, y, TERRAIN.wallV); // horizontal wall faces win at junctions
     block(x, y);
   }
 }
-hwall(0, 0, W - 1); // back wall of office + kitchen
-hwall(16, 0, 20, [4, 5, 14, 15]); // office | lounge + meeting (doors)
-hwall(12, 21, W - 1, []); // kitchen | bathroom
-vwall(0, 0, H - 1);
-vwall(W - 1, 0, H - 1);
-vwall(20, 0, H - 1, [7, 8, 15, 21, 22]); // doors: office↔kitchen, office↔bathroom, meeting↔bathroom
-vwall(10, 16, H - 1, [22, 23]); // lounge | meeting
+hwall(0, 0, W - 1, [], [3, 4, 8, 11, 12, 15, 24, 28]); // back wall of office + kitchen (with windows)
+hwall(16, 1, 19, [4, 5, 14, 15]); // office | lounge + meeting (doors)
+hwall(12, 21, W - 2, []); // kitchen | library
+for (let y = 2; y < H; y++) {
+  set(walls, 0, y, TERRAIN.wallLeft);
+  set(walls, W - 1, y, TERRAIN.wallRight);
+  clear(ground, 0, y);
+  clear(ground, W - 1, y);
+  block(0, y);
+  block(W - 1, y);
+}
+vwall(20, 2, H - 1, [7, 8, 15, 21, 22]); // doors: office↔kitchen, office↔library, meeting↔library
+vwall(10, 18, H - 1, [22, 23]); // lounge | meeting
 for (let x = 0; x < W; x++) {
-  set(walls, x, H - 1, TERRAIN.wallTop);
+  set(walls, x, H - 1, TERRAIN.wallBottom);
+  clear(ground, x, H - 1);
   block(x, H - 1);
 }
+// outside the building (above the back wall): no floor
+for (let y = 0; y < 2; y++)
+  for (let x = 0; x < W; x++) {
+    clear(ground, x, y);
+    block(x, y);
+  }
 
 // ── props ──
 const lib: { props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number; layer?: string }[] } = {
