@@ -1,0 +1,29 @@
+html,
+body,
+#game {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: #1f2430;
+}
+
+/* The overlay must not block clicks meant for the game. */
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-title {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  margin: 0;
+  color: #fff;
+  font:
+    600 20px system-ui,
+    sans-serif;
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@founder-town/art",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@founder-town/shared": "*"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "playwright-core": "^1.65.0",
+    "pngjs": "^7.0.0",
+    "vite": "^8.3.7"
+  }
+}

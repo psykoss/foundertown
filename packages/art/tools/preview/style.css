@@ -1,0 +1,65 @@
+body {
+  margin: 0;
+  background: #767b86;
+  color: #fff;
+  font:
+    13px system-ui,
+    sans-serif;
+}
+
+main {
+  padding: 16px;
+}
+
+h2 {
+  margin: 24px 0 8px;
+  font-size: 18px;
+}
+
+h3 {
+  margin: 16px 0 8px;
+  font-size: 14px;
+}
+
+canvas {
+  image-rendering: pixelated;
+}
+
+button {
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  font: inherit;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pair {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.swatch {
+  width: 72px;
+}
+
+.chip {
+  height: 32px;
+}
+
+.row.tight {
+  flex-wrap: nowrap;
+  gap: 2px;
+}
