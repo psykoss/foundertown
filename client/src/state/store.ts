@@ -19,12 +19,40 @@ export interface Hud {
   zoom: number;
 }
 
+/** Floor plan for the minimap, in tile units. Published once by the world scene. */
+export interface Minimap {
+  width: number;
+  height: number;
+  /** Solid wall tiles, row-major (1 = wall). */
+  walls: Uint8Array;
+  /** Thin walls on the west / north edge of a tile. */
+  edges: { x: number; y: number; side: "W" | "N" }[];
+  /** Floor area taken by each piece of furniture. */
+  furniture: { x: number; y: number; w: number; h: number }[];
+}
+
+/** Small anchored panels (one at a time) and blocking dialogs. */
+export type Popover = "menu" | "profile";
+export type Modal = "editProfile" | "editAvatar";
+
 export interface AppState {
   ready: boolean;
   registry: ItemRegistry | null;
   avatar: Avatar;
   playerName: string;
-  builderOpen: boolean;
+  /** IANA time zone shown on the profile. */
+  timeZone: string;
+  /** Profile picture as a data URL (null = initial on a colored circle). */
+  picture: string | null;
+  popover: Popover | null;
+  modal: Modal | null;
+  /** Where "Edit Avatar" returns to when closed. */
+  avatarReturn: Modal | null;
+  sidebarOpen: boolean;
+  minimapOpen: boolean;
+  minimap: Minimap | null;
+  /** UI → camera intent: bump `n` to step the zoom one level in `dir`. */
+  zoomCmd: { n: number; dir: 1 | -1 };
   debug: DebugFlags;
   hud: Hud;
 }
@@ -78,12 +106,45 @@ export function persistAvatar(a: Avatar) {
   }
 }
 
+interface Profile {
+  name: string;
+  timeZone: string;
+  picture: string | null;
+}
+const PROFILE_KEY = "ft.profile.v1";
+function loadProfile(): Profile {
+  const fallback: Profile = { name: "You", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", picture: null };
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (raw) return { ...fallback, ...(JSON.parse(raw) as Partial<Profile>) };
+  } catch {
+    /* storage unavailable */
+  }
+  return fallback;
+}
+export function persistProfile(p: Profile) {
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  } catch {
+    /* storage unavailable or picture too large */
+  }
+}
+const profile = loadProfile();
+
 export const store = createStore<AppState>({
   ready: false,
   registry: null,
   avatar: loadAvatar(),
-  playerName: "You",
-  builderOpen: false,
+  playerName: profile.name,
+  timeZone: profile.timeZone,
+  picture: profile.picture,
+  popover: null,
+  modal: null,
+  avatarReturn: null,
+  sidebarOpen: true,
+  minimapOpen: true,
+  minimap: null,
+  zoomCmd: { n: 0, dir: 1 },
   debug: { grid: false, collision: false, depth: false },
   hud: { fps: 0, tileX: 0, tileY: 0, zone: null, zoom: 1 },
 });

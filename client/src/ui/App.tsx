@@ -1,45 +1,85 @@
+import { useEffect, useState, type ReactNode } from "react";
 import { store, useStore } from "../state/store";
-import { CharacterBuilder } from "./CharacterBuilder";
+import { BottomBar, LogoMenu, MapControls, ProfileCard, Sidebar, SidebarToggle } from "./Shell";
+import { EditProfile } from "./EditProfile";
+import { EditAvatar } from "./EditAvatar";
+
+/** Matches `--t-open` in styles.css. */
+const EXIT_MS = 200;
+
+/** Keeps its children mounted for one exit animation after `show` turns false (`data-closing` drives the CSS). */
+function Presence({ show, children }: { show: boolean; children: ReactNode }) {
+  const [mounted, setMounted] = useState(show);
+  useEffect(() => {
+    if (show) return setMounted(true);
+    const id = setTimeout(() => setMounted(false), EXIT_MS);
+    return () => clearTimeout(id);
+  }, [show]);
+  if (!show && !mounted) return null;
+  return <div className="presence" data-closing={show ? undefined : ""}>{children}</div>;
+}
 
 export function App() {
   const ready = useStore((s) => s.ready);
-  const builderOpen = useStore((s) => s.builderOpen);
+  const sidebarOpen = useStore((s) => s.sidebarOpen);
+  const popover = useStore((s) => s.popover);
+  const modal = useStore((s) => s.modal);
+  const avatarReturn = useStore((s) => s.avatarReturn);
   const hud = useStore((s) => s.hud);
   const debug = useStore((s) => s.debug);
   const anyDebug = debug.grid || debug.collision || debug.depth;
 
-  if (!ready) return <div className="loading">Loading Founder Town…</div>;
+  // The game frame (#game) lives outside React; its inset follows the sidebar through a body class.
+  useEffect(() => {
+    document.body.classList.toggle("no-sidebar", !sidebarOpen);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const s = store.get();
+      if (s.popover) store.set({ popover: null });
+      else if (s.modal === "editAvatar") store.set({ modal: s.avatarReturn, avatarReturn: null });
+      else if (s.modal) store.set({ modal: null });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <>
-      <div className="hud-top">
-        <span className="brand">Founder Town</span>
-        {hud.zone && <span className="chip">{hud.zone.replace("_", " ")}</span>}
+      {/* always mounted: it slides out via body.no-sidebar instead of popping */}
+      <Sidebar />
+
+      <div className="frame-ui">
+        {!ready && <div className="loading">Loading Founder Town…</div>}
+        {ready && (
+          <>
+            <div className="frame-top">
+              <SidebarToggle />
+              {hud.zone && <span className="zone-chip">{hud.zone.replace("_", " ")}</span>}
+            </div>
+            {anyDebug && (
+              <div className="debug-panel">
+                <div>fps {hud.fps}</div>
+                <div>tile {hud.tileX},{hud.tileY}</div>
+                <div>zoom {hud.zoom}×</div>
+                <div className="muted">F1 grid · F2 collision · F3 depth</div>
+              </div>
+            )}
+            <MapControls />
+            <BottomBar />
+          </>
+        )}
       </div>
 
-      {anyDebug && (
-        <div className="debug-panel">
-          <div>fps {hud.fps}</div>
-          <div>tile {hud.tileX},{hud.tileY}</div>
-          <div>zoom {hud.zoom}×</div>
-          <div className="muted">F1 grid · F2 collision · F3 depth</div>
-        </div>
-      )}
+      {popover && <div className="popover-catch" onMouseDown={() => store.set({ popover: null })} />}
+      <Presence show={popover === "menu"}><LogoMenu /></Presence>
+      <Presence show={popover === "profile"}><ProfileCard /></Presence>
 
-      <div className="dock">
-        <button className="btn" onClick={() => store.set({ builderOpen: true })}>
-          Avatar
-        </button>
-        <button
-          className="btn ghost"
-          onClick={() => store.set((s) => ({ debug: { grid: !anyDebug, collision: !anyDebug, depth: !anyDebug } }))}
-        >
-          Debug
-        </button>
-        <span className="hint">WASD / arrows or click to walk</span>
-      </div>
-
-      {builderOpen && <CharacterBuilder />}
+      {/* stays mounted under Edit Avatar so unsaved name/time-zone edits survive the round trip */}
+      <Presence show={modal === "editProfile" || (modal === "editAvatar" && avatarReturn === "editProfile")}><EditProfile /></Presence>
+      <Presence show={modal === "editAvatar"}><EditAvatar /></Presence>
     </>
   );
 }

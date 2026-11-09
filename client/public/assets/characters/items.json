@@ -8,6 +8,9 @@
 
     { "id": "hair_short_01", "slot": "hair", "name": "Short", "channels": ["primary"],
       "parts": [{ "layer": "hair_front", "sheet": "hair/hair_short_01.png" }] },
+    { "id": "hair_swept_01", "slot": "hair", "name": "Swept", "channels": ["primary"],
+      "parts": [{ "layer": "hair_front", "sheet": "hair/hair_swept_01.png" }],
+      "partsUnderHat": [{ "layer": "hair_front", "sheet": "hair/hair_swept_01_hat.png" }] },
     { "id": "hair_long_01", "slot": "hair", "name": "Long", "channels": ["primary"],
       "parts": [{ "layer": "hair_back", "sheet": "hair/hair_long_01_back.png" }, { "layer": "hair_front", "sheet": "hair/hair_long_01_front.png" }] },
     { "id": "hair_bun_01", "slot": "hair", "name": "Bun", "channels": ["primary"],

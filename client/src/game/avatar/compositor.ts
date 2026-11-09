@@ -3,6 +3,7 @@
  * Pure DOM canvas, no Phaser — used by the game AND the builder preview.
  */
 import {
+  itemParts,
   FRAME_H, SHEET_DIRS, SHEET_H, SHEET_W, ANIM_ORDER, sheetRow, LAYER_ORDER, SLOTS,
   avatarKey, buildSwapTable, resolveRamp, skinRamp, swapPixels,
   type Avatar, type Channel, type ItemRegistry, type Layer, type Ramp,
@@ -60,7 +61,7 @@ async function bake(a: Avatar, reg: ItemRegistry): Promise<HTMLCanvasElement> {
     const s = resolveRamp(slot, choice.secondary);
     if (p) swaps.primary = p;
     if (s) swaps.secondary = s;
-    for (const part of item.parts)
+    for (const part of itemParts(item, a))
       jobs.push(recoloredLayer(part.sheet, swaps).then((c) => void layers.set(part.layer, c)));
   }
   await Promise.all(jobs);
