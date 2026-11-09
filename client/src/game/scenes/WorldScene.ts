@@ -12,6 +12,7 @@ import { Character } from "../entities/Character";
 import { CharacterView } from "../entities/CharacterView";
 import { InputController } from "../input/InputController";
 import { setupCamera } from "../render/camera";
+import { TileCursor } from "../render/TileCursor";
 import { DebugOverlay } from "../debug/DebugOverlay";
 import { WorldView, DEPTH_ABOVE } from "../world/WorldView";
 
@@ -28,7 +29,7 @@ export class WorldScene extends Phaser.Scene {
   private npcs: Npc[] = [];
   private input_!: InputController;
   private debug!: DebugOverlay;
-  private marker!: Phaser.GameObjects.Rectangle;
+  private cursor!: TileCursor;
   private hudTimer = 0;
   private rand = rng(7);
 
@@ -56,9 +57,24 @@ export class WorldScene extends Phaser.Scene {
 
     this.input_ = new InputController(this);
     this.debug = new DebugOverlay(this, this.world);
-    this.marker = this.add.rectangle(0, 0, TILE - 4, TILE - 4).setStrokeStyle(1, 0xffffff, 0.9).setOrigin(0).setVisible(false).setDepth(-5);
+    this.cursor = new TileCursor(this);
 
-    setupCamera(this, this.player.sprite, view.widthPx, view.heightPx, (zoom) => store.set((s) => ({ hud: { ...s.hud, zoom } })));
+    const camera = setupCamera(this, this.player.sprite, view.widthPx, view.heightPx, (zoom) => store.set((s) => ({ hud: { ...s.hud, zoom } })));
+    store.watch((s) => s.zoomCmd, (c) => camera.zoomStep(c.dir));
+
+    // Minimap floor plan (walls, thin walls, furniture footprints) + own name tag opens the profile card
+    const { width, height, grid } = this.world;
+    const walls = new Uint8Array(width * height);
+    raw.layers.find((l) => l.name === "collision" && l.type === "tilelayer")?.data?.forEach((gid, i) => (walls[i] = gid ? 1 : 0));
+    const edges: { x: number; y: number; side: "W" | "N" }[] = [];
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++)
+        for (const side of ["W", "N"] as const) if (grid.hasEdge(x, y, side)) edges.push({ x, y, side });
+    const furniture = this.world.furniture
+      .filter((f) => f.footprint.w > 0 && f.footprint.h > 0)
+      .map((f) => ({ x: f.x / TILE, y: f.y / TILE - f.footprint.h, w: f.width / TILE, h: f.footprint.h }));
+    store.set({ minimap: { width, height, walls, edges, furniture } });
+    this.player.label.onClick(() => store.set({ popover: "profile" }));
 
     // Store → world bindings
     store.watch((s) => s.avatar, (a) => {
@@ -66,7 +82,7 @@ export class WorldScene extends Phaser.Scene {
       this.player.refreshAvatar();
     });
     store.watch((s) => s.playerName, (n) => (me.name = n));
-    store.watch((s) => s.builderOpen, (open) => (this.input_.enabled = !open));
+    store.watch((s) => s.modal, (m) => (this.input_.enabled = !m));
 
     store.set({ ready: true });
     void DEPTH_ABOVE;
@@ -82,13 +98,15 @@ export class WorldScene extends Phaser.Scene {
       const path = findPath(this.world.grid, me.tile, click);
       if (path) {
         me.setPath(path);
-        this.marker.setPosition(click.x * TILE + 2, click.y * TILE + 2).setVisible(true);
+        this.cursor.click(click);
       }
     }
+    // hover shadow only where you could actually walk
+    const hover = this.input_.hoverTile;
+    this.cursor.setHover(hover && this.world.grid.inBounds(hover.x, hover.y) && !this.world.grid.isBlocked(hover.x, hover.y) ? hover : null);
 
     // logic
     me.update(dt, this.input_.direction, this.world.grid);
-    if (!me.path.length) this.marker.setVisible(false);
     for (const npc of this.npcs) this.updateNpc(npc, dt);
 
     // render

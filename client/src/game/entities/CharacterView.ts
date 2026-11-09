@@ -5,13 +5,14 @@ import Phaser from "phaser";
 import { FEET_Y, FRAME_H, TILE, sheetDirFor, walkerPos, avatarKey, type ItemRegistry } from "@ft/shared";
 import type { Character } from "./Character";
 import { animKey, ensureAvatarTexture } from "../avatar/textures";
+import { NameTag } from "../render/NameTag";
 
 /** Feet sit this many px above the bottom edge of their tile. */
 const FEET_INSET = 3;
 
 export class CharacterView {
   readonly sprite: Phaser.GameObjects.Sprite;
-  readonly label: Phaser.GameObjects.Text;
+  readonly label: NameTag;
   private tex: string | null = null;
   private appearance = "";
 
@@ -21,16 +22,7 @@ export class CharacterView {
     private registry: ItemRegistry,
   ) {
     this.sprite = scene.add.sprite(0, 0, "__DEFAULT").setOrigin(0.5, (FEET_Y + 1) / FRAME_H).setVisible(false);
-    this.label = scene.add
-      .text(0, 0, character.name, {
-        fontFamily: "ui-monospace, Menlo, monospace",
-        fontSize: "8px",
-        color: "#ffffff",
-        backgroundColor: "#5c4ebe",
-        padding: { x: 3, y: 1 },
-        resolution: 4,
-      })
-      .setOrigin(0.5, 1);
+    this.label = new NameTag(scene, character.name);
     this.refreshAvatar();
   }
 
@@ -56,8 +48,8 @@ export class CharacterView {
   update() {
     const { x, y } = this.feet();
     this.sprite.setPosition(x, y).setDepth(y);
-    this.label.setPosition(x, y - 35).setDepth(1_000_000 + y);
-    if (this.label.text !== this.character.name) this.label.setText(this.character.name);
+    this.label.setWorldPosition(x, y - 35);
+    this.label.setName(this.character.name);
     if (!this.tex) return;
     const w = this.character.walker;
     const { sheetDir, flipX } = sheetDirFor(w.dir);
