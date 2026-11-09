@@ -4,8 +4,8 @@
  * which is what guarantees clothing lines up with the body on every frame.
  *
  * Motion model (shared by the body animator and every clothing drawer):
- *   idle: head bobs 1px on frames 2–3
- *   walk: upper body (head, torso, arms, hip) drops 1px on contact frames; legs lift / stride
+ *   head + upper body are fixed (bobbing read as the head sinking into the torso)
+ *   walk: legs lift (front/back) or stride (side); idle is static
  */
 import type { AnimName, SheetDir } from "../../shared/src/spec.js";
 
@@ -17,8 +17,8 @@ export interface R {
 }
 
 export const MOTION = {
-  idleHead: [0, 0, 1, 1],
-  walkBob: [1, 0, 0, 1, 0, 0],
+  idleHead: [0, 0, 0, 0], // head never moves (it sank into the torso)
+  walkBob: [0, 0, 0, 0, 0, 0], // no body bob: only legs animate
   liftA: [0, 2, 1, 0, 0, 0],
   liftB: [0, 0, 0, 0, 2, 1],
   sideStride: [0, 1, 2, 0, -1, -2],
