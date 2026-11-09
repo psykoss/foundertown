@@ -16,7 +16,7 @@ import {
 } from "../shared/src/spec.js";
 import { ENV_RAMPS, FIXED_COLORS, KEY_RAMPS, masterPalette } from "../shared/src/palette.js";
 import type { ItemRegistry } from "../shared/src/avatar.js";
-import { TERRAIN } from "./lib/env.js";
+import { TERRAIN, TERRAIN_COUNT, LIBRARY_FLOORS } from "./lib/env.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "client/public/assets");
@@ -627,8 +627,12 @@ const E = ENV_RAMPS as Record<string, Ramp4>;
 
 function terrainTileset(): Canvas {
   // Reference style: flat pastel fills, joints/patterns 1 shade off the fill, no outlines.
-  const c = new Canvas(8 * TILE, 2 * TILE);
+  const c = new Canvas(8 * TILE, (TERRAIN_COUNT / 8) * TILE);
   const at = (id: number) => ({ ox: (id % 8) * TILE, oy: Math.floor(id / 8) * TILE });
+  for (const [id, name] of Object.entries(LIBRARY_FLOORS)) {
+    const { ox, oy } = at(Number(id));
+    c.blit(Canvas.load(path.join(ROOT, "art/props/floors", name + ".png")), ox, oy);
+  }
 
   /** Running-bond bricks: fill + 1px joints in a slightly darker tone. */
   const bricks = (id: number, fill: string, joint: string, bw: number, bh: number) => {
@@ -765,163 +769,6 @@ function terrainTileset(): Canvas {
   return c;
 }
 
-/** Furniture: individual images (Tiled "collection of images" tileset). footprint in tiles. */
-const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; draw: (c: Canvas) => void }[] = [
-  {
-    name: "desk", w: 64, h: 64, fw: 2, fh: 1,
-    draw: (c) => {
-      new Region(64, 64, E.paper!).round(1, 26, 62, 12, 1).paint(c);
-      new Region(64, 64, E.metal!).rect(3, 37, 58, 22).paint(c);
-      new Region(64, 64, E.metal!).rect(5, 59, 3, 4).paint(c);
-      new Region(64, 64, E.metal!).rect(56, 59, 3, 4).paint(c);
-      // laptop
-      new Region(64, 64, E.metal!).round(20, 14, 22, 14, 1).paint(c);
-      c.fill(22, 16, 18, 10, E.water![2]!);
-      c.fill(23, 17, 8, 1, E.water![3]!);
-      new Region(64, 64, E.metal!).rect(17, 28, 28, 4).paint(c);
-      // mug
-      new Region(64, 64, E.wallFace!).round(49, 22, 6, 7, 1).paint(c);
-    },
-  },
-  {
-    name: "chair", w: 32, h: 48, fw: 1, fh: 1,
-    draw: (c) => {
-      new Region(32, 48, E.dark!).round(7, 8, 18, 20, 2).paint(c);
-      new Region(32, 48, E.dark!).round(6, 26, 20, 8, 1).paint(c);
-      new Region(32, 48, E.metal!).rect(15, 34, 3, 8).paint(c);
-      new Region(32, 48, E.metal!).rect(8, 42, 16, 3).paint(c);
-    },
-  },
-  {
-    name: "plant", w: 32, h: 64, fw: 1, fh: 1,
-    draw: (c) => {
-      const leaf = new Region(32, 64, E.leaf!);
-      leaf.ellipse(16, 22, 10, 12).ellipse(9, 32, 6, 7).ellipse(23, 31, 6, 7).ellipse(16, 12, 6, 7);
-      leaf.paint(c);
-      new Region(32, 64, E.wood!).round(9, 40, 14, 20, 2).paint(c);
-      c.fill(10, 41, 12, 2, E.wood![0]!);
-    },
-  },
-  {
-    name: "sofa", w: 96, h: 64, fw: 3, fh: 1,
-    draw: (c) => {
-      new Region(96, 64, E.fabric!).round(4, 20, 88, 22, 3).paint(c);
-      new Region(96, 64, E.fabric!).round(1, 32, 12, 26, 2).paint(c);
-      new Region(96, 64, E.fabric!).round(83, 32, 12, 26, 2).paint(c);
-      new Region(96, 64, E.fabric!).round(12, 40, 36, 18, 2).paint(c);
-      new Region(96, 64, E.fabric!).round(48, 40, 36, 18, 2).paint(c);
-    },
-  },
-  {
-    name: "counter", w: 96, h: 64, fw: 3, fh: 1,
-    draw: (c) => {
-      new Region(96, 64, E.wallTop!).round(0, 22, 96, 10, 1).paint(c);
-      new Region(96, 64, E.wood!).rect(2, 31, 92, 31).paint(c);
-      for (let x = 10; x < 90; x += 16) c.fill(x, 34, 1, 26, E.wood![1]!);
-      // espresso machine
-      new Region(96, 64, E.metal!).round(10, 4, 22, 22, 2).paint(c);
-      c.fill(14, 10, 4, 3, E.accent![2]!);
-      new Region(96, 64, E.metal!).rect(17, 18, 8, 3).paint(c);
-      // cups
-      for (const x of [44, 52, 60]) new Region(96, 64, E.tileFloor!).round(x, 16, 6, 7, 1).paint(c);
-      // register
-      new Region(96, 64, E.wallTop!).round(72, 10, 16, 14, 1).paint(c);
-      c.fill(75, 12, 10, 5, E.water![3]!);
-    },
-  },
-  {
-    name: "table_round", w: 64, h: 64, fw: 2, fh: 1,
-    draw: (c) => {
-      new Region(64, 64, E.metal!).rect(29, 38, 6, 20).paint(c);
-      new Region(64, 64, E.metal!).round(18, 56, 28, 5, 1).paint(c);
-      new Region(64, 64, E.wood!).ellipse(32, 34, 26, 10).paint(c);
-      new Region(64, 64, E.tileFloor!).round(22, 26, 6, 7, 1).paint(c);
-      new Region(64, 64, E.tileFloor!).round(38, 28, 6, 7, 1).paint(c);
-    },
-  },
-  {
-    name: "bookshelf", w: 64, h: 96, fw: 2, fh: 1,
-    draw: (c) => {
-      new Region(64, 96, E.wood!).rect(2, 4, 60, 90).paint(c);
-      const colors: Ramp4[] = [E.coral!, E.wood!, E.metal!, E.water!, E.wood!];
-      for (let s = 0; s < 4; s++) {
-        const y = 10 + s * 21;
-        c.fill(6, y, 52, 17, E.wood![0]!);
-        let x = 7;
-        let k = s;
-        while (x < 54) {
-          const bw = 3 + ((k * 7) % 4);
-          const bh = 12 + ((k * 5) % 5);
-          new Region(64, 96, colors[k % colors.length]!).rect(x, y + 17 - bh, bw, bh).paint(c);
-          x += bw + 1;
-          k++;
-        }
-      }
-    },
-  },
-  {
-    name: "whiteboard", w: 64, h: 64, fw: 2, fh: 1,
-    draw: (c) => {
-      new Region(64, 64, E.metal!).rect(8, 40, 3, 22).paint(c);
-      new Region(64, 64, E.metal!).rect(53, 40, 3, 22).paint(c);
-      new Region(64, 64, E.metal!).round(2, 4, 60, 40, 1).paint(c);
-      c.fill(5, 7, 54, 34, E.paper![3]!);
-      c.fill(9, 12, 22, 1, E.water![1]!);
-      c.fill(9, 16, 30, 1, E.water![1]!);
-      c.fill(9, 20, 16, 1, E.accent![2]!);
-      new Region(64, 64, E.leaf!).rect(38, 22, 16, 14).paint(c);
-    },
-  },
-  {
-    name: "tree", w: 64, h: 96, fw: 2, fh: 1,
-    draw: (c) => {
-      new Region(64, 96, E.wood!).rect(26, 56, 12, 36).paint(c);
-      const leaves = new Region(64, 96, E.leaf!);
-      leaves.ellipse(32, 34, 26, 24).ellipse(18, 50, 12, 10).ellipse(46, 50, 12, 10);
-      leaves.paint(c);
-      const rand = rng(42);
-      for (let i = 0; i < 40; i++) {
-        const x = Math.floor(rand() * 40) + 12;
-        const y = Math.floor(rand() * 34) + 16;
-        if (leaves.has(x, y) && leaves.has(x + 1, y + 1)) c.set(x, y, E.leaf![3]!);
-      }
-    },
-  },
-  {
-    name: "bench", w: 64, h: 48, fw: 2, fh: 1,
-    draw: (c) => {
-      new Region(64, 48, E.wood!).rect(2, 10, 60, 6).paint(c);
-      new Region(64, 48, E.wood!).rect(2, 18, 60, 6).paint(c);
-      new Region(64, 48, E.wood!).rect(0, 26, 64, 8).paint(c);
-      new Region(64, 48, E.metal!).rect(6, 33, 4, 12).paint(c);
-      new Region(64, 48, E.metal!).rect(54, 33, 4, 12).paint(c);
-    },
-  },
-  {
-    name: "lamp", w: 32, h: 96, fw: 1, fh: 1,
-    draw: (c) => {
-      new Region(32, 96, E.metal!).rect(14, 20, 4, 70).paint(c);
-      new Region(32, 96, E.metal!).round(10, 88, 12, 6, 1).paint(c);
-      new Region(32, 96, E.metal!).round(8, 8, 16, 14, 2).paint(c);
-      c.fill(11, 12, 10, 7, E.accent![3]!);
-      c.fill(12, 13, 4, 2, E.paper![3]!);
-    },
-  },
-  {
-    name: "pill_station", w: 32, h: 64, fw: 1, fh: 1,
-    draw: (c) => {
-      new Region(32, 64, E.dark!).round(4, 6, 24, 54, 3).paint(c);
-      new Region(32, 64, E.water!).round(7, 10, 18, 24, 2).paint(c);
-      // capsule icon
-      c.fill(11, 18, 5, 6, E.accent![2]!);
-      c.fill(16, 18, 5, 6, E.paper![3]!);
-      c.fill(12, 17, 8, 1, E.dark![1]!);
-      c.fill(12, 24, 8, 1, E.dark![1]!);
-      new Region(32, 64, E.metal!).round(9, 40, 14, 10, 1).paint(c);
-    },
-  },
-];
-
 // ───────────────────────────── run ─────────────────────────────
 
 function main() {
@@ -940,14 +787,18 @@ function main() {
   fs.copyFileSync(path.join(ROOT, "art/characters/items.json"), path.join(OUT, "characters/items.json"));
 
   save(terrainTileset(), "tilesets/terrain.png");
-  for (const f of FURNITURE) {
-    const c = new Canvas(f.w, f.h);
-    f.draw(c);
-    save(c, `furniture/${f.name}.png`);
+  // Prop library (art/props, built by scripts/tools/build_props.py) → assets/furniture + manifest
+  const lib = JSON.parse(fs.readFileSync(path.join(ROOT, "art/props/props.json"), "utf8")) as {
+    props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number }[];
+  };
+  for (const p of lib.props) {
+    const dst = path.join(OUT, "furniture", p.file);
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, "art/props", p.file), dst);
   }
   fs.writeFileSync(
     path.join(OUT, "furniture/furniture.json"),
-    JSON.stringify(FURNITURE.map(({ name, w, h, fw, fh }) => ({ name, w, h, footprintW: fw, footprintH: fh })), null, 2),
+    JSON.stringify(lib.props.map((p) => ({ ...p, layer: p.name.startsWith("rug_") ? "floor" : "" })), null, 1),
   );
 
   // Master palette for Aseprite (.gpl)

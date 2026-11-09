@@ -18,8 +18,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    const furniture = this.cache.json.get("furniture") as { name: string }[];
-    for (const f of furniture) this.load.image(`furn:${f.name}`, `${A}furniture/${f.name}.png`);
+    const furniture = this.cache.json.get("furniture") as { name: string; file: string }[];
+    for (const f of furniture) this.load.image(`furn:${f.name}`, `${A}furniture/${f.file}`);
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
       store.set({ registry: this.cache.json.get("items") as ItemRegistry });
       this.scene.start("World");

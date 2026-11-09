@@ -107,6 +107,17 @@ export function rgbKey(r: number, g: number, b: number): number {
   return (r << 16) | (g << 8) | b;
 }
 
+/** Colors of the prop library (art/props) — keep in sync with scripts/tools/build_props.py PROP_PALETTE. */
+export const PROP_PALETTE = [
+  "#ede4da", "#ecdbc7", "#e8d3b4", "#e0b693", "#cfa17e", "#a97d60", "#9f6e5c", "#875c40", "#7b4e41",
+  "#efedf6", "#f8f6fc", "#ffffff", "#dde4f1", "#d6d8e8", "#dbddeb", "#c4c6d8", "#b2bdce", "#a3aeb2",
+  "#97a3a7", "#8995ab", "#839194", "#7d8291", "#6e7b7d", "#626f7b", "#596367", "#4b5062", "#30325b",
+  "#2b2c2b", "#52567b", "#565e82", "#7b7dae", "#888dc9", "#919ed6", "#a3aad9", "#5c4ebe", "#5c43ab",
+  "#404ea7", "#3e70c2", "#579be0", "#90d6f1", "#9fc6cd", "#66c1ce", "#509ab9", "#396e9e", "#b5dfd6",
+  "#ddeedc", "#d3e3d2", "#abd8b5", "#97c5a0", "#96d975", "#6fae81", "#528f5f", "#3b7057", "#f7d674",
+  "#efd1a2", "#efa948", "#c28433", "#ac5633", "#e86c67", "#c25a52", "#f9dbc2", "#b479ea", "#8b58d3",
+];
+
 /** All colors of the master palette (for validation and the .gpl export). */
 export function masterPalette(): string[] {
   const set = new Set<string>();
@@ -116,6 +127,7 @@ export function masterPalette(): string[] {
   add(HAIR_RAMPS);
   add(CLOTH_RAMPS);
   add(ENV_RAMPS);
+  PROP_PALETTE.forEach((c) => set.add(c));
   Object.values(FIXED_COLORS).forEach((c) => set.add(c));
   return [...set];
 }

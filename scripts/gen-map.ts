@@ -1,21 +1,23 @@
 /**
- * Generates the STARTER town map as a Tiled map (.tmj) with embedded tilesets.
- * After this first generation, the map is edited in Tiled — this script refuses to overwrite
- * an existing map unless you pass --force.
+ * Generates the starter OFFICE map as a Tiled map (.tmj) with embedded tilesets.
+ * After this first generation the map is edited in Tiled — this script refuses to overwrite an existing
+ * map unless you pass --force.
  *
- * Layers (see docs/spec.md §Map):
- *   ground, ground_detail, walls  → tile layers drawn under characters
- *   collision                     → tile layer, hidden in game, any tile = blocked
- *   objects                       → furniture as TILE OBJECTS (y-sorted with characters)
- *   above                         → tile layer always drawn over characters
- *   markers                       → spawns + zones
+ * Layout (34×27 tiles):
+ *   ┌──────────── open office ────────────┬──── kitchen ────┐
+ *   │ lavender carpet, 8 desks + chairs   │ counters, table │
+ *   │                                     ├──── bathroom ───┤
+ *   ├──── lounge ─────┬──── meeting ──────┤ stalls, sinks   │
+ *   └─────────────────┴───────────────────┴─────────────────┘
+ *
+ * Walls: a horizontal wall = cap row + 2 face rows below it (3/4 view); vertical walls = cap column.
+ * Props come from the prop library (art/props, see scripts/tools/build_props.py) by name.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { rng } from "./lib/pixel.js";
 import { TERRAIN, TERRAIN_COLUMNS, TERRAIN_COUNT } from "./lib/env.js";
-import type { TiledMap, TiledObject, TiledLayer } from "../shared/src/map.js";
+import type { TiledMap, TiledObject, TiledLayer, TiledProperty } from "../shared/src/map.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = path.join(ROOT, "client/public/assets");
@@ -25,155 +27,175 @@ if (fs.existsSync(OUT) && !process.argv.includes("--force")) {
   process.exit(0);
 }
 
-const W = 48;
-const H = 34;
+const W = 34;
+const H = 27;
 const T = 32;
 const FIRST_TERRAIN = 1;
 const FIRST_FURN = 1 + TERRAIN_COUNT;
 
-const ground = new Array(W * H).fill(0);
-const detail = new Array(W * H).fill(0);
-const walls = new Array(W * H).fill(0);
-const collision = new Array(W * H).fill(0);
-const above = new Array(W * H).fill(0);
+const layer = () => new Array(W * H).fill(0);
+const ground = layer(), detail = layer(), walls = layer(), collision = layer(), above = layer();
 const objects: TiledObject[] = [];
 const markers: TiledObject[] = [];
 let nextId = 1;
 
-const g = (id: number) => FIRST_TERRAIN + id;
-const set = (layer: number[], x: number, y: number, id: number) => {
-  if (x >= 0 && y >= 0 && x < W && y < H) layer[y * W + x] = g(id);
+const set = (l: number[], x: number, y: number, id: number) => {
+  if (x >= 0 && y >= 0 && x < W && y < H) l[y * W + x] = FIRST_TERRAIN + id;
 };
-const block = (x: number, y: number) => set(collision, x, y, TERRAIN.collision);
-const fillRect = (layer: number[], x: number, y: number, w: number, h: number, id: number) => {
-  for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) set(layer, xx, yy, id);
+const clear = (l: number[], x: number, y: number) => {
+  if (x >= 0 && y >= 0 && x < W && y < H) l[y * W + x] = 0;
 };
+const fill = (l: number[], x: number, y: number, w: number, h: number, id: number) => {
+  for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) set(l, xx, yy, id);
+};
+const block = (x: number, y: number, w = 1, h = 1) => fill(collision, x, y, w, h, TERRAIN.collision);
 
-// Grass base with variation
-const rand = rng(1234);
-for (let y = 0; y < H; y++)
-  for (let x = 0; x < W; x++) {
-    const r = rand();
-    set(ground, x, y, r < 0.08 ? TERRAIN.grass2 : r < 0.3 ? TERRAIN.grass1 : TERRAIN.grass0);
+// ── floors ──
+fill(ground, 0, 0, W, H, TERRAIN.wood); // cream brick (office default)
+fill(ground, 2, 4, 17, 10, TERRAIN.carpet); // desk area (lavender carpet, like the reference office)
+fill(ground, 21, 3, 12, 9, TERRAIN.floorYellow); // kitchen
+fill(ground, 21, 15, 12, 11, TERRAIN.floorBath); // bathroom
+fill(ground, 1, 19, 9, 7, TERRAIN.floorHerringbone); // lounge
+fill(ground, 11, 19, 9, 7, TERRAIN.floorConcrete); // meeting room
+
+// ── walls ──
+/** Horizontal wall: cap at y, faces at y+1 (with window/face) and y+2 (baseboard); gaps = door columns. */
+function hwall(y: number, x1: number, x2: number, gaps: number[] = [], windows: number[] = []) {
+  for (let x = x1; x <= x2; x++) {
+    if (gaps.includes(x)) continue;
+    set(walls, x, y, TERRAIN.wallTop);
+    set(walls, x, y + 1, windows.includes(x) ? TERRAIN.wallWindow : TERRAIN.wallFace);
+    set(walls, x, y + 2, TERRAIN.wallFaceLow);
+    block(x, y, 1, 3);
   }
-
-// Border hedge
+}
+/** Vertical wall: cap column; gaps = door rows. */
+function vwall(x: number, y1: number, y2: number, gaps: number[] = []) {
+  for (let y = y1; y <= y2; y++) {
+    if (gaps.includes(y)) {
+      clear(walls, x, y);
+      clear(collision, x, y);
+      continue;
+    }
+    set(walls, x, y, TERRAIN.wallTop);
+    block(x, y);
+  }
+}
+hwall(0, 0, W - 1); // back wall of office + kitchen
+hwall(16, 0, 20, [4, 5, 14, 15]); // office | lounge + meeting (doors)
+hwall(12, 21, W - 1, []); // kitchen | bathroom
+vwall(0, 0, H - 1);
+vwall(W - 1, 0, H - 1);
+vwall(20, 0, H - 1, [7, 8, 15, 21, 22]); // doors: office↔kitchen, office↔bathroom, meeting↔bathroom
+vwall(10, 16, H - 1, [22, 23]); // lounge | meeting
 for (let x = 0; x < W; x++) {
-  set(walls, x, 0, TERRAIN.hedge);
-  set(walls, x, H - 1, TERRAIN.hedge);
-  block(x, 0);
+  set(walls, x, H - 1, TERRAIN.wallTop);
   block(x, H - 1);
 }
-for (let y = 0; y < H; y++) {
-  set(walls, 0, y, TERRAIN.hedge);
-  set(walls, W - 1, y, TERRAIN.hedge);
-  block(0, y);
-  block(W - 1, y);
-}
 
-// Paths
-fillRect(ground, 1, 17, W - 2, 2, TERRAIN.path);
-fillRect(ground, 23, 14, 2, H - 15, TERRAIN.path);
-fillRect(ground, 10, 14, 2, 3, TERRAIN.path);
-fillRect(ground, 36, 14, 2, 3, TERRAIN.path);
+// ── props ──
+const lib: { props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number; layer?: string }[] } = {
+  props: JSON.parse(fs.readFileSync(path.join(ASSETS, "furniture/furniture.json"), "utf8")),
+};
+const byName = new Map(lib.props.map((p, i) => [p.name, { ...p, gid: FIRST_FURN + i }]));
+const size = (name: string) => byName.get(name)!;
 
 /**
- * A building in 3/4 view: back wall shows its FACE (2 tiles tall), side and front walls show only
- * their top cap. Door = gap in the front wall.
+ * Place a prop. (px, py) = pixel position of its BOTTOM-LEFT corner (Tiled tile-object convention).
+ * Helpers below place by tile.
  */
-function building(x: number, y: number, w: number, h: number, floor: number, doorX: number, windows: number[]) {
-  fillRect(ground, x + 1, y + 3, w - 2, h - 4, floor);
-  // back wall: cap row + 2 face rows
-  fillRect(walls, x, y, w, 1, TERRAIN.wallTop);
-  fillRect(walls, x + 1, y + 1, w - 2, 1, TERRAIN.wallFace);
-  fillRect(walls, x + 1, y + 2, w - 2, 1, TERRAIN.wallFaceLow);
-  for (const wx of windows) set(walls, x + wx, y + 1, TERRAIN.wallWindow);
-  // side walls (caps)
-  fillRect(walls, x, y, 1, h, TERRAIN.wallTop);
-  fillRect(walls, x + w - 1, y, 1, h, TERRAIN.wallTop);
-  // front wall cap with door gap
-  for (let xx = x; xx < x + w; xx++) if (xx !== doorX && xx !== doorX + 1) set(walls, xx, y + h - 1, TERRAIN.wallTop);
-  set(ground, doorX, y + h - 1, TERRAIN.doormat);
-  set(ground, doorX + 1, y + h - 1, TERRAIN.doormat);
-  // collision: everything wall except door
-  for (let yy = y; yy < y + h; yy++)
-    for (let xx = x; xx < x + w; xx++) {
-      const inside = xx > x && xx < x + w - 1 && yy >= y + 3 && yy < y + h - 1;
-      const door = yy === y + h - 1 && (xx === doorX || xx === doorX + 1);
-      if (!inside && !door) block(xx, yy);
-    }
+function placePx(name: string, px: number, py: number, z = 0) {
+  const p = byName.get(name);
+  if (!p) throw new Error(`unknown prop ${name}`);
+  const properties: TiledProperty[] = z ? [{ name: "z", type: "int", value: z }] : [];
+  objects.push({ id: nextId++, name, x: Math.round(px), y: Math.round(py), width: p.w, height: p.h, gid: p.gid, properties });
 }
+/** Stand a prop on tile row `ty` (its base on the bottom of that row), left edge at tile tx (+ px offset). */
+const place = (name: string, tx: number, ty: number, dx = 0, dy = 0, z = 0) => placePx(name, tx * T + dx, (ty + 1) * T + dy, z);
+/** Center a prop horizontally within `tiles` tiles starting at tx. */
+const placeC = (name: string, tx: number, ty: number, tiles: number, dy = 0, z = 0) =>
+  place(name, tx, ty, Math.round((tiles * T - size(name).w) / 2), dy, z);
+/** Wall-mounted decor on a face row (no collision, drawn above the wall). */
+const mount = (name: string, tx: number, faceRow: number, tiles = 1) => placeC(name, tx, faceRow, tiles, -4);
 
-building(2, 2, 18, 12, TERRAIN.wood, 10, [3, 6, 11, 14]); // Office
-fillRect(ground, 3, 6, 15, 6, TERRAIN.carpet); // desk area carpet (reference office)
-building(28, 2, 18, 12, TERRAIN.tileFloor, 36, [3, 7, 10, 14]); // Café
-fillRect(ground, 31, 9, 8, 3, TERRAIN.carpet);
+// Open office: two rows of four desks with chairs (reference layout)
+for (const row of [5, 10])
+  for (const tx of [2, 6, 10, 14]) {
+    placeC("desk", tx, row, 3);
+    placeC("office_chair", tx, row + 1, 3, -6);
+  }
+placeC("plant_desk", 2, 5, 1, -22, 20);
+placeC("plant_desk", 16, 10, 1, -22, 20);
+mount("window_wide", 2, 1, 4);
+mount("painting_sunset", 7, 1, 2);
+mount("window", 10, 1, 2);
+mount("window_wide", 13, 1, 4);
+place("bookshelf", 17, 3, 0, 0);
+placeC("plant_tree", 1, 3, 1);
+placeC("shelf_white", 9, 3, 1);
+placeC("lamp_red", 1, 14, 1);
+placeC("plant_small", 18, 14, 1);
+placeC("cabinet", 1, 8, 1, 0);
 
-// Pond
-fillRect(ground, 34, 23, 8, 5, TERRAIN.water);
-fillRect(ground, 33, 22, 10, 1, TERRAIN.sand);
-fillRect(ground, 33, 28, 10, 1, TERRAIN.sand);
-fillRect(ground, 33, 23, 1, 5, TERRAIN.sand);
-fillRect(ground, 42, 23, 1, 5, TERRAIN.sand);
-for (let y = 23; y < 28; y++) for (let x = 34; x < 42; x++) block(x, y);
-
-// Plaza (pill stations)
-fillRect(ground, 19, 22, 10, 6, TERRAIN.path);
-
-// ── Furniture (tile objects: x = left, y = BOTTOM in pixels) ──
-const furnMeta: { name: string; w: number; h: number; footprintW: number; footprintH: number }[] = JSON.parse(
-  fs.readFileSync(path.join(ASSETS, "furniture/furniture.json"), "utf8"),
-);
-const furnIndex = new Map(furnMeta.map((f, i) => [f.name, i]));
-function place(name: string, tileX: number, tileY: number) {
-  const i = furnIndex.get(name);
-  if (i === undefined) throw new Error(`unknown furniture ${name}`);
-  const m = furnMeta[i]!;
-  // tileY = the tile row the furniture's base stands on
-  objects.push({ id: nextId++, name, x: tileX * T, y: (tileY + 1) * T, width: m.w, height: m.h, gid: FIRST_FURN + i });
+// Kitchen: counter run along the back wall, dining table with chairs
+{
+  let px = 21 * T + 4;
+  const base = 4 * T - 2;
+  for (const n of ["fridge", "counter_drawers", "sink_double", "stove", "counter", "counter_cabinet", "counter_doors", "kitchen_shelf"]) {
+    placePx(n, px, base);
+    px += size(n).w;
+  }
+  block(21, 3, 12, 1);
+  placePx("microwave", 21 * T + 4 + size("fridge").w + 8, base - 24, 30);
+  placePx("coffee_machine", 21 * T + 4 + size("fridge").w + 47 + 47 + 29 + 8, base - 24, 30);
+  placePx("mixer", 21 * T + 4 + size("fridge").w + 47 + 47 + 29 + 31 + 12, base - 24, 30);
 }
+place("table_dining", 25, 9, 6, 0);
+placeC("chair_front", 25, 6, 3, 0);
+placeC("chair_back", 25, 10, 3, 0);
+place("chair_left", 24, 9, 4, -6);
+place("chair_right", 28, 9, 2, -6);
+placeC("plant_tree", 32, 11, 1);
+mount("painting_sea", 29, 1, 2);
 
-// Office
-place("whiteboard", 4, 5);
-place("bookshelf", 15, 5);
-place("plant", 18, 5);
-place("plant", 3, 12);
-for (const [x, y] of [[4, 7], [8, 7], [13, 7], [4, 10], [8, 10], [13, 10]] as const) {
-  place("desk", x, y);
-  place("chair", x, y + 1);
-}
-place("sofa", 16, 12);
+// Bathroom: stalls + urinals + vanities on the back wall
+place("stalls", 22, 15, 4, 0);
+place("urinals", 27, 15, -6, -2);
+place("vanity", 29, 15, 4, 0);
+place("vanity_double", 31, 15, -4, 0);
+placeC("plant_small", 32, 25, 1);
 
-// Café
-place("counter", 30, 5);
-place("plant", 44, 5);
-place("bookshelf", 41, 5);
-for (const [x, y] of [[32, 8], [38, 8], [32, 11], [41, 11]] as const) place("table_round", x, y);
-place("chair", 34, 8);
-place("chair", 40, 8);
-place("sofa", 29, 12);
+// Lounge
+place("rug_red", 2, 23, 12, 10);
+placeC("sofa_grey", 3, 20, 3, 4);
+placeC("coffee_table", 3, 22, 3, 6);
+place("sofa_side_a", 1, 23, 4, 0);
+place("sofa_side_b", 7, 23, 4, 0);
+mount("painting_forest", 6, 17, 2);
+placeC("plant_tree", 1, 19, 1);
+placeC("lamp_blue", 8, 19, 1);
+placeC("plant_small", 8, 25, 1);
 
-// Outdoors
-for (const [x, y] of [[3, 21], [7, 25], [3, 29], [13, 23], [16, 29], [44, 20], [45, 30], [30, 30], [10, 30]] as const) place("tree", x, y);
-place("bench", 20, 21);
-place("bench", 26, 21);
-place("bench", 36, 21);
-place("lamp", 18, 19);
-place("lamp", 29, 19);
-place("lamp", 18, 28);
-place("lamp", 29, 28);
-place("pill_station", 21, 24);
-place("pill_station", 23, 24);
-place("pill_station", 25, 24);
-place("pill_station", 27, 24);
+// Meeting room
+place("rug_green", 13, 23, 8, 6);
+placeC("table_meeting", 13, 23, 3, -6);
+placeC("chair_front", 13, 20, 3, 4);
+placeC("chair_back", 13, 24, 3, 4);
+place("chair_left", 12, 22, 2, 0);
+place("chair_right", 16, 22, 4, 0);
+mount("chalkboard", 13, 17, 3);
+placeC("plant_tree", 19, 19, 1);
+placeC("wardrobe", 11, 25, 2, 0);
 
-// ── Markers ──
-markers.push({ id: nextId++, name: "main", type: "spawn", x: 24 * T + 16, y: 19 * T + 16, width: 0, height: 0 });
+// ── markers ──
+markers.push({ id: nextId++, name: "main", type: "spawn", x: 10 * T + 16, y: 14 * T + 16, width: 0, height: 0 });
 const zone = (name: string, kind: string, x: number, y: number, w: number, h: number) =>
   markers.push({ id: nextId++, name, type: "zone", x: x * T, y: y * T, width: w * T, height: h * T, properties: [{ name: "kind", type: "string", value: kind }] });
-zone("office", "room", 3, 5, 16, 8);
-zone("cafe", "room", 29, 5, 16, 8);
-zone("pill_plaza", "pills", 19, 22, 10, 6);
+zone("open_office", "room", 1, 3, 19, 13);
+zone("kitchen", "room", 21, 3, 12, 9);
+zone("bathroom", "room", 21, 15, 12, 11);
+zone("lounge", "room", 1, 19, 9, 7);
+zone("meeting_room", "room", 11, 19, 9, 7);
 
 const tileLayer = (id: number, name: string, data: number[], visible = true): TiledLayer => ({
   id, name, type: "tilelayer", width: W, height: H, data, visible, opacity: 1,
@@ -208,13 +230,14 @@ const map: TiledMap & Record<string, unknown> = {
       imageheight: (TERRAIN_COUNT / TERRAIN_COLUMNS) * T, margin: 0, spacing: 0,
     } as TiledMap["tilesets"][number],
     {
-      firstgid: FIRST_FURN, name: "furniture", tilewidth: 96, tileheight: 96, tilecount: furnMeta.length, columns: 0,
+      firstgid: FIRST_FURN, name: "props", tilewidth: 160, tileheight: 160, tilecount: lib.props.length, columns: 0,
       grid: { orientation: "orthogonal", width: 1, height: 1 }, margin: 0, spacing: 0,
-      tiles: furnMeta.map((m, i) => ({
-        id: i, image: `../furniture/${m.name}.png`, imagewidth: m.w, imageheight: m.h,
+      tiles: lib.props.map((m, i) => ({
+        id: i, image: `../furniture/${m.file}`, imagewidth: m.w, imageheight: m.h,
         properties: [
           { name: "footprintW", type: "int", value: m.footprintW },
           { name: "footprintH", type: "int", value: m.footprintH },
+          ...(m.layer ? [{ name: "layer", type: "string", value: m.layer }] : []),
         ],
       })),
     } as TiledMap["tilesets"][number],
@@ -223,4 +246,4 @@ const map: TiledMap & Record<string, unknown> = {
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(map));
-console.log(`map: wrote ${path.relative(ROOT, OUT)} (${W}×${H}, ${objects.length} objects)`);
+console.log(`map: wrote ${path.relative(ROOT, OUT)} (${W}×${H}, ${objects.length} props)`);

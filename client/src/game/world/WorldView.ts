@@ -23,7 +23,8 @@ export class WorldView {
 
     for (const f of world.furniture) {
       const img = scene.add.image(f.x, f.y, `furn:${f.image.replace(/\.png$/, "")}`).setOrigin(0, 1);
-      img.setDepth(f.y); // base y — same rule as characters' feet
+      // base y — same rule as characters' feet; rugs lie under everything; counter items sit above their counter
+      img.setDepth(f.layer === "floor" ? -5 : f.y + f.z);
       this.furniture.push(img);
     }
     void raw;

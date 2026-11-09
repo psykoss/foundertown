@@ -86,6 +86,10 @@ export interface FurnitureInstance {
   width: number;
   height: number;
   footprint: { w: number; h: number }; // tiles, anchored at bottom-left
+  /** "floor" = drawn under characters (rugs); otherwise y-sorted */
+  layer: string;
+  /** depth offset in px (e.g. items standing on a counter) */
+  z: number;
 }
 
 export interface Spawn {
@@ -143,7 +147,9 @@ export function parseWorld(map: TiledMap): WorldData {
         const fw = prop(hit.tile.properties, "footprintW", Math.round(o.width / TILE));
         const fh = prop(hit.tile.properties, "footprintH", 1);
         const image = hit.tile.image.split("/").pop()!;
-        furniture.push({ id: o.id, image, x: o.x, y: o.y, width: o.width, height: o.height, footprint: { w: fw, h: fh } });
+        const layer = prop(hit.tile.properties, "layer", "");
+        const z = prop(o.properties, "z", 0);
+        furniture.push({ id: o.id, image, x: o.x, y: o.y, width: o.width, height: o.height, footprint: { w: fw, h: fh }, layer, z });
         const tx = Math.round(o.x / TILE);
         const tyBottom = Math.round(o.y / TILE) - 1;
         grid.blockRect(tx, tyBottom - fh + 1, fw, fh);

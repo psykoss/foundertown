@@ -76,9 +76,8 @@ for (const item of reg.items) {
 
 // ── environment ──
 for (const dir of ["tilesets", "furniture"]) {
-  for (const f of fs.readdirSync(path.join(A, dir)).filter((n) => n.endsWith(".png"))) {
-    scanColors(Canvas.load(path.join(A, dir, f)), master, `${dir}/${f}`, true);
-  }
+  const files = (fs.readdirSync(path.join(A, dir), { recursive: true }) as string[]).filter((n) => n.endsWith(".png"));
+  for (const f of files) scanColors(Canvas.load(path.join(A, dir, f)), master, `${dir}/${f}`, true);
 }
 
 // ── map ──
