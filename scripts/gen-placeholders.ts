@@ -46,9 +46,14 @@ class Frame {
     return this.p.dir;
   }
   /** A shaded region with the black outline used by all character art. */
-  reg(ch: Ch | Ramp4, inside?: (x: number, y: number) => boolean, dim = 0): Region {
+  reg(
+    ch: Ch | Ramp4,
+    inside?: (x: number, y: number) => boolean,
+    dim = 0,
+    shadeAt?: (x: number, y: number) => number | undefined,
+  ): Region {
     const r = new Region(FRAME_W, FRAME_H, typeof ch === "string" ? KEY_RAMPS[ch] : ch);
-    this.ops.push(() => r.paint(this.c, 0, 0, { outlineColor: BLACK, inside, volume: true, dim }));
+    this.ops.push(() => r.paint(this.c, 0, 0, { outlineColor: BLACK, inside, volume: true, dim, shadeAt }));
     return r;
   }
   /** Region for clothing: soft edge where it meets the body/head, black on the outer silhouette. */
@@ -60,7 +65,13 @@ class Frame {
   /** Region for hair/headwear: black outline only on the head silhouette, soft edge where it meets skin. */
   headReg(ch: Ch): Region {
     const m = headMask(this.p);
-    return this.reg(ch, (x, y) => x >= 0 && y >= 0 && x < FRAME_W && y < FRAME_H && m[y * FRAME_W + x] === 1);
+    const shades = headShades(this.p);
+    return this.reg(
+      ch,
+      (x, y) => x >= 0 && y >= 0 && x < FRAME_W && y < FRAME_H && m[y * FRAME_W + x] === 1,
+      0,
+      (x, y) => shades[y * FRAME_W + x]! >= 0 ? shades[y * FRAME_W + x] : undefined,
+    );
   }
   /** Shift a painted key-ramp pixel one shade darker (d=-1) or lighter (d=+1). Outline/fixed colors untouched. */
   shift(x: number, y: number, d: number) {
@@ -176,6 +187,24 @@ function headMask(p: Pose): Uint8Array {
       if (hexAt(src, x, y) && ty >= 0 && ty < FRAME_H) m[ty * FRAME_W + x] = 1;
     }
   return m;
+}
+
+/**
+ * Shade index (0–3) of the reference head at each pixel, -1 where not skin.
+ * Hair and headwear copy this, so they carry exactly the reference head's shading.
+ */
+function headShades(p: Pose): Int8Array {
+  const src = BASE[p.dir].head;
+  const out = new Int8Array(FRAME_W * FRAME_H).fill(-1);
+  for (let y = 0; y < FRAME_H; y++)
+    for (let x = 0; x < FRAME_W; x++) {
+      const h = hexAt(src, x, y);
+      const ty = y + p.m.headDy;
+      if (!h || ty < 0 || ty >= FRAME_H) continue;
+      const i = (KEY_RAMPS.skin as readonly string[]).indexOf(h);
+      if (i >= 0) out[ty * FRAME_W + x] = i;
+    }
+  return out;
 }
 
 /** Body silhouette (torso, arms, legs — animated) for a pose. */

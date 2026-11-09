@@ -121,6 +121,8 @@ export class Region {
       volume?: boolean;
       /** Shift the whole shape N shades darker (e.g. legs, which sit in the body's shadow). */
       dim?: number;
+      /** Explicit shade (0–3) per pixel, e.g. copied from the reference art; overrides `volume` where defined. */
+      shadeAt?: (x: number, y: number) => number | undefined;
     } = {},
   ): void {
     const run = (x: number, y: number, dx: number, dy: number) => {
@@ -136,6 +138,7 @@ export class Region {
         let shade = 2;
         if (opts.flat) shade = 2;
         else if (edge && outline) shade = 0;
+        else if (opts.shadeAt && opts.shadeAt(x, y) !== undefined) shade = opts.shadeAt(x, y)!;
         else if (opts.volume) {
           // Cel shading measured from the reference body (light from top-front):
           //  - one flat lit shade over most of the shape
