@@ -112,8 +112,20 @@ export class Region {
     c: Canvas,
     ox = 0,
     oy = 0,
-    opts: { outline?: boolean; flat?: boolean; outlineColor?: string; inside?: (x: number, y: number) => boolean } = {},
+    opts: {
+      outline?: boolean;
+      flat?: boolean;
+      outlineColor?: string;
+      inside?: (x: number, y: number) => boolean;
+      /** Round-volume shading: light from top-front, darker toward the sides and bottom. */
+      volume?: boolean;
+    } = {},
   ): void {
+    const run = (x: number, y: number, dx: number, dy: number) => {
+      let n = 0;
+      while (this.has(x + dx * (n + 1), y + dy * (n + 1))) n++;
+      return n;
+    };
     const outline = opts.outline ?? true;
     for (let y = 0; y < this.h; y++)
       for (let x = 0; x < this.w; x++) {
@@ -122,7 +134,18 @@ export class Region {
         let shade = 2;
         if (opts.flat) shade = 2;
         else if (edge && outline) shade = 0;
-        else if (!this.has(x - 2, y) || !this.has(x, y - 2)) shade = 3;
+        else if (opts.volume) {
+          // position inside the shape's row/column span → 0..1
+          const l = run(x, y, -1, 0), r = run(x, y, 1, 0), t = run(x, y, 0, -1), b = run(x, y, 0, 1);
+          const u = l / Math.max(1, l + r); // 0 = left edge, 1 = right edge
+          const v = t / Math.max(1, t + b); // 0 = top, 1 = bottom
+          const side = Math.abs(u - 0.42) * 2; // light slightly from the left
+          let light = 1 - side * side * 0.9 - v * 0.55;
+          if (t <= 1 && side < 0.6) light += 0.35; // top highlight band
+          if (b === 1) light -= 0.25; // contact shadow on the bottom row
+          shade = light > 0.78 ? 3 : light > 0.32 ? 2 : light > -0.1 ? 1 : 0;
+          if (shade === 0 && l > 0 && r > 0 && b > 0) shade = 1; // keep darkest shade for edges
+        } else if (!this.has(x - 2, y) || !this.has(x, y - 2)) shade = 3;
         else if (!this.has(x + 2, y) || !this.has(x, y + 2)) shade = 1;
         // Edges that only touch the silhouette's interior (e.g. hair meeting skin) get the ramp's dark shade,
         // not the black outline — black is reserved for the outer silhouette.
