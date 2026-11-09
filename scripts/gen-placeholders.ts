@@ -7,6 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Canvas, Region, rng, type Ramp4 } from "./lib/pixel.js";
 import { pose, HEAD_BOTTOM, LEG_TOP, LEG_SPLIT_X, type Pose, type R } from "./lib/pose.js";
 import {
@@ -17,7 +18,7 @@ import { ENV_RAMPS, FIXED_COLORS, KEY_RAMPS, masterPalette } from "../shared/src
 import type { ItemRegistry } from "../shared/src/avatar.js";
 import { TERRAIN } from "./lib/env.js";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "client/public/assets");
 const FORCE = process.argv.includes("--force");
 let written = 0;

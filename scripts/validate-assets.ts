@@ -7,6 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Canvas } from "./lib/pixel.js";
 import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, SHEET_H, SHEET_W, sheetRow,
@@ -14,7 +15,7 @@ import {
   type ItemRegistry, type TiledMap,
 } from "../shared/src/index.js";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const A = path.join(ROOT, "client/public/assets");
 const errors: string[] = [];
 const err = (m: string) => errors.push(m);

@@ -5,6 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Canvas } from "./lib/pixel.js";
 import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, sheetRow,
@@ -12,7 +13,7 @@ import {
   buildSwapTable, swapPixels, type Avatar, type ItemRegistry, type Layer, type Ramp, type SlotChoice,
 } from "../shared/src/index.js";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = path.join(ROOT, "client/public/assets/characters");
 const reg: ItemRegistry = JSON.parse(fs.readFileSync(path.join(ASSETS, "items.json"), "utf8"));
 

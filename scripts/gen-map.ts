@@ -12,11 +12,12 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { rng } from "./lib/pixel.js";
 import { TERRAIN, TERRAIN_COLUMNS, TERRAIN_COUNT } from "./lib/env.js";
 import type { TiledMap, TiledObject, TiledLayer } from "../shared/src/map.js";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = path.join(ROOT, "client/public/assets");
 const OUT = path.join(ASSETS, "maps/town.tmj");
 if (fs.existsSync(OUT) && !process.argv.includes("--force")) {
