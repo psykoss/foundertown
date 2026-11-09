@@ -20,17 +20,17 @@
  {
   "name": "bookshelf",
   "file": "office/bookshelf.png",
-  "w": 64,
-  "h": 64,
-  "footprintW": 2,
+  "w": 32,
+  "h": 32,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  },
  {
   "name": "shelf_white",
   "file": "office/shelf_white.png",
-  "w": 42,
-  "h": 62,
+  "w": 21,
+  "h": 31,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -38,26 +38,26 @@
  {
   "name": "cabinet",
   "file": "office/cabinet.png",
-  "w": 54,
-  "h": 64,
-  "footprintW": 2,
+  "w": 27,
+  "h": 32,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  },
  {
   "name": "wardrobe",
   "file": "office/wardrobe.png",
-  "w": 54,
-  "h": 78,
-  "footprintW": 2,
+  "w": 27,
+  "h": 39,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  },
  {
   "name": "plant_tree",
   "file": "office/plant_tree.png",
-  "w": 36,
-  "h": 62,
+  "w": 18,
+  "h": 31,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -65,8 +65,8 @@
  {
   "name": "plant_small",
   "file": "office/plant_small.png",
-  "w": 28,
-  "h": 46,
+  "w": 14,
+  "h": 23,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -74,8 +74,8 @@
  {
   "name": "plant_desk",
   "file": "office/plant_desk.png",
-  "w": 24,
-  "h": 28,
+  "w": 12,
+  "h": 14,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -83,8 +83,8 @@
  {
   "name": "lamp_blue",
   "file": "office/lamp_blue.png",
-  "w": 30,
-  "h": 66,
+  "w": 15,
+  "h": 33,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -92,8 +92,8 @@
  {
   "name": "lamp_red",
   "file": "office/lamp_red.png",
-  "w": 30,
-  "h": 66,
+  "w": 15,
+  "h": 33,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -101,17 +101,17 @@
  {
   "name": "chalkboard",
   "file": "office/chalkboard.png",
-  "w": 56,
-  "h": 46,
-  "footprintW": 2,
+  "w": 28,
+  "h": 23,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  },
  {
   "name": "monitor_desk",
   "file": "office/monitor_desk.png",
-  "w": 32,
-  "h": 44,
+  "w": 16,
+  "h": 22,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -119,8 +119,8 @@
  {
   "name": "painting_sunset",
   "file": "office/painting_sunset.png",
-  "w": 56,
-  "h": 26,
+  "w": 28,
+  "h": 13,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
@@ -128,8 +128,8 @@
  {
   "name": "painting_sea",
   "file": "office/painting_sea.png",
-  "w": 42,
-  "h": 28,
+  "w": 21,
+  "h": 14,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
@@ -137,8 +137,8 @@
  {
   "name": "painting_forest",
   "file": "office/painting_forest.png",
-  "w": 42,
-  "h": 26,
+  "w": 21,
+  "h": 13,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
@@ -146,8 +146,8 @@
  {
   "name": "window",
   "file": "office/window.png",
-  "w": 50,
-  "h": 40,
+  "w": 25,
+  "h": 20,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
@@ -155,26 +155,8 @@
  {
   "name": "window_wide",
   "file": "office/window_wide.png",
-  "w": 128,
-  "h": 50,
-  "footprintW": 0,
-  "footprintH": 0,
-  "layer": ""
- },
- {
-  "name": "door_wood",
-  "file": "office/door_wood.png",
-  "w": 28,
-  "h": 42,
-  "footprintW": 0,
-  "footprintH": 0,
-  "layer": ""
- },
- {
-  "name": "door_double",
-  "file": "office/door_double.png",
   "w": 64,
-  "h": 56,
+  "h": 25,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
@@ -182,8 +164,8 @@
  {
   "name": "rug_red",
   "file": "office/rug_red.png",
-  "w": 120,
-  "h": 80,
+  "w": 60,
+  "h": 40,
   "footprintW": 0,
   "footprintH": 0,
   "layer": "floor"
@@ -191,8 +173,8 @@
  {
   "name": "rug_blue",
   "file": "office/rug_blue.png",
-  "w": 80,
-  "h": 120,
+  "w": 40,
+  "h": 60,
   "footprintW": 0,
   "footprintH": 0,
   "layer": "floor"
@@ -200,8 +182,8 @@
  {
   "name": "rug_small_blue",
   "file": "office/rug_small_blue.png",
-  "w": 48,
-  "h": 36,
+  "w": 24,
+  "h": 18,
   "footprintW": 0,
   "footprintH": 0,
   "layer": "floor"
@@ -209,8 +191,8 @@
  {
   "name": "rug_green",
   "file": "office/rug_green.png",
-  "w": 52,
-  "h": 56,
+  "w": 26,
+  "h": 28,
   "footprintW": 0,
   "footprintH": 0,
   "layer": "floor"
@@ -218,26 +200,26 @@
  {
   "name": "sofa_red",
   "file": "lounge/sofa_red.png",
-  "w": 96,
-  "h": 52,
-  "footprintW": 3,
+  "w": 48,
+  "h": 26,
+  "footprintW": 2,
   "footprintH": 1,
   "layer": ""
  },
  {
   "name": "sofa_grey",
   "file": "lounge/sofa_grey.png",
-  "w": 94,
-  "h": 54,
-  "footprintW": 3,
+  "w": 47,
+  "h": 27,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  },
  {
   "name": "sofa_side_a",
   "file": "lounge/sofa_side_a.png",
-  "w": 44,
-  "h": 116,
+  "w": 22,
+  "h": 58,
   "footprintW": 1,
   "footprintH": 2,
   "layer": ""
@@ -245,8 +227,8 @@
  {
   "name": "sofa_side_b",
   "file": "lounge/sofa_side_b.png",
-  "w": 44,
-  "h": 116,
+  "w": 22,
+  "h": 58,
   "footprintW": 1,
   "footprintH": 2,
   "layer": ""
@@ -254,26 +236,26 @@
  {
   "name": "coffee_table",
   "file": "lounge/coffee_table.png",
-  "w": 76,
-  "h": 42,
-  "footprintW": 2,
+  "w": 38,
+  "h": 21,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  },
  {
   "name": "table_meeting",
   "file": "meeting/table_meeting.png",
-  "w": 76,
-  "h": 74,
-  "footprintW": 2,
-  "footprintH": 2,
+  "w": 38,
+  "h": 37,
+  "footprintW": 1,
+  "footprintH": 1,
   "layer": ""
  },
  {
   "name": "chair_front",
   "file": "meeting/chair_front.png",
-  "w": 28,
-  "h": 28,
+  "w": 14,
+  "h": 14,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -281,8 +263,8 @@
  {
   "name": "chair_back",
   "file": "meeting/chair_back.png",
-  "w": 28,
-  "h": 28,
+  "w": 14,
+  "h": 14,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -290,8 +272,8 @@
  {
   "name": "chair_left",
   "file": "meeting/chair_left.png",
-  "w": 26,
-  "h": 42,
+  "w": 13,
+  "h": 21,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -299,8 +281,8 @@
  {
   "name": "chair_right",
   "file": "meeting/chair_right.png",
-  "w": 26,
-  "h": 42,
+  "w": 13,
+  "h": 21,
   "footprintW": 1,
   "footprintH": 1,
   "layer": ""
@@ -416,10 +398,10 @@
  {
   "name": "table_dining",
   "file": "kitchen/table_dining.png",
-  "w": 76,
-  "h": 74,
-  "footprintW": 2,
-  "footprintH": 2,
+  "w": 38,
+  "h": 37,
+  "footprintW": 1,
+  "footprintH": 1,
   "layer": ""
  },
  {
@@ -441,24 +423,6 @@
   "layer": ""
  },
  {
-  "name": "toilet",
-  "file": "bathroom/toilet.png",
-  "w": 24,
-  "h": 31,
-  "footprintW": 1,
-  "footprintH": 1,
-  "layer": ""
- },
- {
-  "name": "toilet_side",
-  "file": "bathroom/toilet_side.png",
-  "w": 23,
-  "h": 32,
-  "footprintW": 1,
-  "footprintH": 1,
-  "layer": ""
- },
- {
   "name": "vanity_double",
   "file": "bathroom/vanity_double.png",
   "w": 61,
@@ -477,20 +441,38 @@
   "layer": ""
  },
  {
-  "name": "stalls",
-  "file": "bathroom/stalls.png",
-  "w": 150,
-  "h": 76,
-  "footprintW": 5,
+  "name": "toilet",
+  "file": "bathroom/toilet.png",
+  "w": 20,
+  "h": 28,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  },
  {
-  "name": "urinals",
-  "file": "bathroom/urinals.png",
-  "w": 64,
-  "h": 34,
-  "footprintW": 2,
+  "name": "urinal",
+  "file": "bathroom/urinal.png",
+  "w": 14,
+  "h": 25,
+  "footprintW": 1,
+  "footprintH": 1,
+  "layer": ""
+ },
+ {
+  "name": "stall",
+  "file": "bathroom/stall.png",
+  "w": 34,
+  "h": 60,
+  "footprintW": 1,
+  "footprintH": 1,
+  "layer": ""
+ },
+ {
+  "name": "stall_open",
+  "file": "bathroom/stall_open.png",
+  "w": 34,
+  "h": 60,
+  "footprintW": 1,
   "footprintH": 1,
   "layer": ""
  }

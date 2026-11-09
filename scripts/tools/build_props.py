@@ -88,40 +88,38 @@ MANIFEST = [
     # ── office ──
     ("desk", "office", ("desk_part", "desk"), 1, (3, 1)),
     ("office_chair", "office", ("desk_part", "chair"), 1, (1, 1)),
-    ("bookshelf", "office", ("sub", "interiors", 33, (0, 0, 32, 32)), 2, (2, 1)),
-    ("shelf_white", "office", ("c", "interiors", 45), 2, (1, 1)),
-    ("cabinet", "office", ("c", "interiors", 146), 2, (2, 1)),
-    ("wardrobe", "office", ("c", "interiors", 145), 2, (2, 1)),
-    ("plant_tree", "office", ("c", "interiors", 130), 2, (1, 1)),
-    ("plant_small", "office", ("c", "interiors", 134), 2, (1, 1)),
-    ("plant_desk", "office", ("c", "interiors", 148), 2, (1, 1)),
-    ("lamp_blue", "office", ("c", "interiors", 161), 2, (1, 1)),
-    ("lamp_red", "office", ("c", "interiors", 162), 2, (1, 1)),
-    ("chalkboard", "office", ("c", "interiors", 124), 2, (2, 1)),
-    ("monitor_desk", "office", ("c", "interiors", 12), 2, (1, 1)),
-    ("painting_sunset", "office", ("c", "interiors", 50), 2, (0, 0)),
-    ("painting_sea", "office", ("c", "interiors", 57), 2, (0, 0)),
-    ("painting_forest", "office", ("c", "interiors", 56), 2, (0, 0)),
-    ("window", "office", ("c", "interiors", 63), 2, (0, 0)),
-    ("window_wide", "office", ("c", "interiors", 70), 2, (0, 0)),
-    ("door_wood", "office", ("c", "interiors", 13), 2, (0, 0)),
-    ("door_double", "office", ("c", "interiors", 64), 2, (0, 0)),
-    ("rug_red", "office", ("c", "interiors", 38), 2, (0, 0)),
-    ("rug_blue", "office", ("c", "interiors", 24), 2, (0, 0)),
-    ("rug_small_blue", "office", ("c", "interiors", 51), 2, (0, 0)),
-    ("rug_green", "office", ("c", "interiors", 72), 2, (0, 0)),
+    ("bookshelf", "office", ("sub", "interiors", 33, (0, 0, 32, 32)), 1, (2, 1)),
+    ("shelf_white", "office", ("c", "interiors", 45), 1, (1, 1)),
+    ("cabinet", "office", ("c", "interiors", 146), 1, (2, 1)),
+    ("wardrobe", "office", ("c", "interiors", 145), 1, (2, 1)),
+    ("plant_tree", "office", ("c", "interiors", 130), 1, (1, 1)),
+    ("plant_small", "office", ("c", "interiors", 134), 1, (1, 1)),
+    ("plant_desk", "office", ("c", "interiors", 148), 1, (1, 1)),
+    ("lamp_blue", "office", ("c", "interiors", 161), 1, (1, 1)),
+    ("lamp_red", "office", ("c", "interiors", 162), 1, (1, 1)),
+    ("chalkboard", "office", ("c", "interiors", 124), 1, (2, 1)),
+    ("monitor_desk", "office", ("c", "interiors", 12), 1, (1, 1)),
+    ("painting_sunset", "office", ("c", "interiors", 50), 1, (0, 0)),
+    ("painting_sea", "office", ("c", "interiors", 57), 1, (0, 0)),
+    ("painting_forest", "office", ("c", "interiors", 56), 1, (0, 0)),
+    ("window", "office", ("c", "interiors", 63), 1, (0, 0)),
+    ("window_wide", "office", ("c", "interiors", 70), 1, (0, 0)),
+    ("rug_red", "office", ("c", "interiors", 38), 1, (0, 0)),
+    ("rug_blue", "office", ("c", "interiors", 24), 1, (0, 0)),
+    ("rug_small_blue", "office", ("c", "interiors", 51), 1, (0, 0)),
+    ("rug_green", "office", ("c", "interiors", 72), 1, (0, 0)),
     # ── lounge ──
-    ("sofa_red", "lounge", ("c", "interiors", 46), 2, (3, 1)),
-    ("sofa_grey", "lounge", ("b", "interiors", (16, 1150, 47, 34)), 2, (3, 1)),
-    ("sofa_side_a", "lounge", ("b", "interiors", (57, 1222, 22, 58)), 2, (1, 2)),
-    ("sofa_side_b", "lounge", ("b", "interiors", (81, 1222, 22, 58)), 2, (1, 2)),
-    ("coffee_table", "lounge", ("c", "interiors", 29), 2, (2, 1)),
+    ("sofa_red", "lounge", ("c", "interiors", 46), 1, (3, 1)),
+    ("sofa_grey", "lounge", ("b", "interiors", (16, 1150, 47, 34)), 1, (3, 1)),
+    ("sofa_side_a", "lounge", ("b", "interiors", (57, 1222, 22, 58)), 1, (1, 2)),
+    ("sofa_side_b", "lounge", ("b", "interiors", (81, 1222, 22, 58)), 1, (1, 2)),
+    ("coffee_table", "lounge", ("c", "interiors", 29), 1, (2, 1)),
     # ── meeting ──
-    ("table_meeting", "meeting", ("c", "interiors", 17), 2, (2, 2)),
-    ("chair_front", "meeting", ("c", "interiors", 75), 2, (1, 1)),
-    ("chair_back", "meeting", ("c", "interiors", 86), 2, (1, 1)),
-    ("chair_left", "meeting", ("c", "interiors", 79), 2, (1, 1)),
-    ("chair_right", "meeting", ("c", "interiors", 79, "flip"), 2, (1, 1)),
+    ("table_meeting", "meeting", ("c", "interiors", 17), 1, (2, 2)),
+    ("chair_front", "meeting", ("c", "interiors", 75), 1, (1, 1)),
+    ("chair_back", "meeting", ("c", "interiors", 86), 1, (1, 1)),
+    ("chair_left", "meeting", ("c", "interiors", 79), 1, (1, 1)),
+    ("chair_right", "meeting", ("c", "interiors", 79, "flip"), 1, (1, 1)),
     # ── kitchen (32px-scale sheet, ×1) ──
     ("counter_drawers", "kitchen", ("c", "kitchen", 119), 1, (1, 1)),
     ("counter", "kitchen", ("c", "kitchen", 120), 1, (1, 1)),
@@ -135,17 +133,93 @@ MANIFEST = [
     ("microwave", "kitchen", ("c", "kitchen", 22), 1, (0, 0)),
     ("mixer", "kitchen", ("c", "kitchen", 72), 1, (0, 0)),
     ("coffee_machine", "kitchen", ("sub", "kitchen", 21, (0, 0, 16, 29)), 1, (0, 0)),
-    ("table_dining", "kitchen", ("c", "interiors", 19), 2, (2, 2)),
+    ("table_dining", "kitchen", ("c", "interiors", 19), 1, (2, 2)),
     ("door_white", "kitchen", ("b", "walls", (0, 293, 32, 68)), 1, (0, 0)),
     ("door_metal", "kitchen", ("b", "walls", (209, 293, 64, 68)), 1, (0, 0)),
-    # ── bathroom (JPEG sheet, ×1) ──
-    ("toilet", "bathroom", ("b", "bathroom", (3, 87, 24, 31)), 1, (1, 1)),
-    ("toilet_side", "bathroom", ("b", "bathroom", (60, 85, 23, 32)), 1, (1, 1)),
+    # ── bathroom (JPEG sheet, ×1; toilet/urinal/stall are drawn clean in draw_bathroom()) ──
     ("vanity_double", "bathroom", ("b", "bathroom", (201, 0, 61, 56)), 1, (2, 1)),
     ("vanity", "bathroom", ("b", "bathroom", (261, 0, 58, 56)), 1, (2, 1)),
-    ("stalls", "bathroom", ("b", "bathroom", (26, 114, 150, 76)), 1, (5, 1)),
-    ("urinals", "bathroom", ("b", "bathroom", (42, 10, 64, 34)), 1, (2, 1)),
 ]
+
+def clean(im, min_size=6):
+    """Despeckle (JPEG sources): drop tiny components and single pixels hanging off the silhouette."""
+    im = im.copy(); px = im.load(); W, H = im.size
+    opaque = lambda x, y: 0 <= x < W and 0 <= y < H and px[x, y][3] > 0
+    for _ in range(2):  # pixels with ≤1 opaque 4-neighbour are spurs/specks
+        kill = [(x, y) for y in range(H) for x in range(W)
+                if opaque(x, y) and sum(opaque(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))) <= 1]
+        for x, y in kill: px[x, y] = (0, 0, 0, 0)
+    seen = set()
+    for y0 in range(H):
+        for x0 in range(W):
+            if (x0, y0) in seen or not opaque(x0, y0): continue
+            comp, st = [], [(x0, y0)]; seen.add((x0, y0))
+            while st:
+                x, y = st.pop(); comp.append((x, y))
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)):
+                    n = (x + dx, y + dy)
+                    if n not in seen and opaque(*n): seen.add(n); st.append(n)
+            if len(comp) < min_size:
+                for x, y in comp: px[x, y] = (0, 0, 0, 0)
+    return im
+
+# ── clean, procedurally drawn bathroom fixtures (palette colors, soft outlines, no JPEG noise) ──
+WHITE, OFF, LIGHT, MID = "#ffffff", "#efedf6", "#d6d8e8", "#b2bdce"
+EDGE, DARK, DARKER = "#8995ab", "#626f7b", "#4b5062"
+WATER, WATER2, CHROME, DOOR, DOOR_EDGE = "#90d6f1", "#66c1ce", "#a3aeb2", "#dde4f1", "#c4c6d8"
+
+def _rgb(h): return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+
+class Pix:
+    def __init__(self, w, h): self.im = Image.new("RGBA", (w, h), (0, 0, 0, 0)); self.px = self.im.load()
+    def set(self, x, y, c):
+        if 0 <= x < self.im.width and 0 <= y < self.im.height: self.px[x, y] = _rgb(c)
+    def rect(self, x, y, w, h, c):
+        for yy in range(y, y + h):
+            for xx in range(x, x + w): self.set(xx, yy, c)
+    def ellipse(self, cx, cy, rx, ry, c):
+        for y in range(int(cy - ry) - 1, int(cy + ry) + 2):
+            for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
+                if ((x + .5 - cx) / rx) ** 2 + ((y + .5 - cy) / ry) ** 2 <= 1: self.set(x, y, c)
+    def outline(self, c=EDGE):
+        """Soft outline: every opaque pixel touching transparency becomes the edge color."""
+        W, H = self.im.size; px = self.px
+        edge = [(x, y) for y in range(H) for x in range(W) if px[x, y][3] and any(
+            not (0 <= x + dx < W and 0 <= y + dy < H) or not px[x + dx, y + dy][3] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+        for x, y in edge: self.set(x, y, c)
+
+def draw_toilet():
+    p = Pix(20, 28)
+    p.rect(2, 0, 16, 8, OFF); p.rect(2, 0, 16, 1, WHITE); p.rect(2, 7, 16, 1, MID)   # tank against the wall
+    p.ellipse(10, 16.5, 9, 8, OFF); p.ellipse(10, 15.5, 8, 6.5, WHITE)                 # bowl + seat
+    p.ellipse(10, 16.5, 5, 4.5, MID); p.ellipse(10, 17, 3.6, 3, WATER); p.ellipse(9.5, 16.5, 1.5, 1.2, WATER2)
+    p.rect(6, 23, 8, 5, LIGHT)                                                           # pedestal
+    p.outline(); p.rect(8, 2, 4, 1, CHROME)                                              # flush button
+    return p.im
+
+def draw_urinal():
+    p = Pix(14, 25)
+    p.rect(6, 0, 2, 5, CHROME); p.rect(4, 0, 6, 2, CHROME)                               # flush pipe
+    p.rect(1, 5, 12, 18, OFF); p.rect(2, 4, 10, 1, OFF); p.rect(2, 23, 10, 2, LIGHT)
+    p.rect(3, 9, 8, 11, LIGHT); p.rect(4, 10, 6, 9, MID); p.rect(6, 17, 2, 1, EDGE)     # basin + drain
+    p.rect(1, 5, 12, 1, WHITE)
+    p.outline(); p.rect(6, 0, 2, 1, EDGE)
+    return p.im
+
+def draw_stall(open_door=False):
+    p = Pix(34, 60)
+    for x in (0, 31):                                                                    # partition posts
+        p.rect(x, 0, 3, 58, DARK); p.rect(x, 0, 1, 58, DARKER); p.rect(x, 58, 3, 2, DARKER)
+    p.rect(0, 0, 34, 3, DARK); p.rect(0, 0, 34, 1, EDGE)                                 # top rail
+    if open_door:
+        t = draw_toilet(); p.im.alpha_composite(t, (7, 20))                              # toilet inside
+        p.rect(3, 4, 4, 50, DOOR); p.rect(6, 4, 1, 50, DOOR_EDGE)                       # door swung open
+    else:
+        p.rect(3, 4, 28, 50, DOOR); p.rect(3, 4, 28, 1, WHITE); p.rect(3, 53, 28, 1, DOOR_EDGE)
+        p.rect(3, 4, 1, 50, DOOR_EDGE); p.rect(30, 4, 1, 50, DOOR_EDGE)
+        p.rect(26, 28, 2, 3, CHROME); p.rect(26, 31, 2, 1, EDGE)                          # handle
+        p.rect(15, 8, 4, 2, "#6fae81")                                                   # vacant indicator
+    return p.im
 
 def desk_parts(uploads):
     im, boxes = sheet("desk", uploads)
@@ -171,9 +245,16 @@ def main(uploads):
             im = box(src[1], src[2], uploads)
         if scale != 1: im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
         im = trim(quantize(im))
+        if src[0] == "b" and src[1] == "bathroom": im = trim(clean(im))
+        if fp != (0, 0):  # footprint from the sprite's own width (1 row deep; side sofas 2)
+            fp = (max(1, round(im.width / 32)), fp[1] if name.startswith("sofa_side") else 1)
         os.makedirs(os.path.join(out_dir, room), exist_ok=True)
         rel = f"{room}/{name}.png"
         im.save(os.path.join(out_dir, rel))
+        meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})
+    for name, im, fp in [("toilet", draw_toilet(), (1, 1)), ("urinal", draw_urinal(), (1, 1)),
+                         ("stall", draw_stall(), (1, 1)), ("stall_open", draw_stall(True), (1, 1))]:
+        rel = f"bathroom/{name}.png"; im.save(os.path.join(out_dir, rel))
         meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})
     # floor textures (16px patterns → 32px tiles)
     fl, _ = sheet("floors", uploads)

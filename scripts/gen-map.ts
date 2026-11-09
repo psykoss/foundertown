@@ -118,74 +118,107 @@ const placeC = (name: string, tx: number, ty: number, tiles: number, dy = 0, z =
 /** Wall-mounted decor on a face row (no collision, drawn above the wall). */
 const mount = (name: string, tx: number, faceRow: number, tiles = 1) => placeC(name, tx, faceRow, tiles, -4);
 
+/**
+ * A table with chairs tucked in on all four sides (pixel-precise so chairs touch the table edges).
+ * (tx, ty) = tile whose bottom edge the table stands on; `count` tables side by side.
+ */
+function tableSet(table: string, tx: number, ty: number, count = 1, sides = true) {
+  const t = size(table);
+  const x0 = tx * T + Math.round((T - t.w) / 2) - Math.round(((count - 1) * t.w) / 2);
+  const base = (ty + 1) * T;
+  for (let i = 0; i < count; i++) {
+    const x = x0 + i * t.w;
+    placePx(table, x, base);
+    const cx = x + Math.round((t.w - size("chair_front").w) / 2);
+    placePx("chair_front", cx, base - t.h + 6); // north side, facing the viewer (tucked behind the table)
+    placePx("chair_back", cx, base + 10); // south side, backrest towards us
+  }
+  if (sides) {
+    placePx("chair_left", x0 - size("chair_left").w + 3, base - 4); // west side, facing east
+    placePx("chair_right", x0 + count * t.w - 3, base - 4); // east side, facing west
+  }
+}
+
 // Open office: two rows of four desks with chairs (reference layout)
 for (const row of [5, 10])
   for (const tx of [2, 6, 10, 14]) {
     placeC("desk", tx, row, 3);
     placeC("office_chair", tx, row + 1, 3, -6);
   }
-placeC("plant_desk", 2, 5, 1, -22, 20);
-placeC("plant_desk", 16, 10, 1, -22, 20);
-mount("window_wide", 2, 1, 4);
-mount("painting_sunset", 7, 1, 2);
-mount("window", 10, 1, 2);
-mount("window_wide", 13, 1, 4);
-place("bookshelf", 17, 3, 0, 0);
+placePx("plant_desk", 2 * T + 10, 6 * T - 20, 20);
+placePx("monitor_desk", 15 * T + 8, 11 * T - 14, 20);
+mount("window_wide", 2, 1, 3);
+mount("painting_sunset", 6, 1, 1);
+mount("window", 8, 1, 1);
+mount("window_wide", 10, 1, 3);
+mount("window", 14, 1, 1);
+placeC("bookshelf", 16, 3, 1);
+placeC("bookshelf", 17, 3, 1);
+placeC("shelf_white", 18, 3, 1);
 placeC("plant_tree", 1, 3, 1);
-placeC("shelf_white", 9, 3, 1);
+placeC("cabinet", 1, 8, 1);
 placeC("lamp_red", 1, 14, 1);
 placeC("plant_small", 18, 14, 1);
-placeC("cabinet", 1, 8, 1, 0);
+placeC("plant_tree", 18, 8, 1);
+placeC("lamp_blue", 18, 5, 1);
+placeC("plant_small", 1, 11, 1);
+placeC("shelf_white", 15, 3, 1);
+placeC("plant_tree", 9, 14, 1);
+placeC("plant_tree", 11, 14, 1);
 
 // Kitchen: counter run along the back wall, dining table with chairs
 {
   let px = 21 * T + 4;
   const base = 4 * T - 2;
+  const at: Record<string, number> = {};
   for (const n of ["fridge", "counter_drawers", "sink_double", "stove", "counter", "counter_cabinet", "counter_doors", "kitchen_shelf"]) {
+    at[n] = px;
     placePx(n, px, base);
     px += size(n).w;
   }
   block(21, 3, 12, 1);
-  placePx("microwave", 21 * T + 4 + size("fridge").w + 8, base - 24, 30);
-  placePx("coffee_machine", 21 * T + 4 + size("fridge").w + 47 + 47 + 29 + 8, base - 24, 30);
-  placePx("mixer", 21 * T + 4 + size("fridge").w + 47 + 47 + 29 + 31 + 12, base - 24, 30);
+  placePx("microwave", at.counter_drawers! + 10, base - 22, 30);
+  placePx("coffee_machine", at.counter! + 8, base - 22, 30);
+  placePx("mixer", at.counter_cabinet! + 14, base - 22, 30);
 }
-place("table_dining", 25, 9, 6, 0);
-placeC("chair_front", 25, 6, 3, 0);
-placeC("chair_back", 25, 10, 3, 0);
-place("chair_left", 24, 9, 4, -6);
-place("chair_right", 28, 9, 2, -6);
+for (const [tx, ty] of [[24, 7], [29, 7], [24, 10], [29, 10]] as const) tableSet("table_dining", tx, ty, 1);
 placeC("plant_tree", 32, 11, 1);
-mount("painting_sea", 29, 1, 2);
+placeC("plant_small", 21, 11, 1);
+mount("painting_sea", 29, 1, 1);
 
-// Bathroom: stalls + urinals + vanities on the back wall
-place("stalls", 22, 15, 4, 0);
-place("urinals", 27, 15, -6, -2);
-place("vanity", 29, 15, 4, 0);
-place("vanity_double", 31, 15, -4, 0);
+// Bathroom: 3 stalls + an open one, urinals, vanities along the back wall
+for (let i = 0; i < 4; i++) placePx(i === 3 ? "stall_open" : "stall", 21 * T + 6 + i * 32, 16 * T);
+block(21, 15, 5, 1);
+for (let i = 0; i < 3; i++) placePx("urinal", 26 * T + 6 + i * 18, 16 * T - 6);
+placePx("vanity", 28 * T + 4, 16 * T);
+placePx("vanity_double", 30 * T + 2, 16 * T);
+block(26, 15, 7, 1);
 placeC("plant_small", 32, 25, 1);
+placeC("plant_tree", 21, 25, 1);
 
-// Lounge
-place("rug_red", 2, 23, 12, 10);
-placeC("sofa_grey", 3, 20, 3, 4);
-placeC("coffee_table", 3, 22, 3, 6);
-place("sofa_side_a", 1, 23, 4, 0);
-place("sofa_side_b", 7, 23, 4, 0);
-mount("painting_forest", 6, 17, 2);
+// Lounge: sofa facing down, side sofas facing in, coffee table on a rug
+place("rug_red", 3, 22, 14, 6);
+placeC("sofa_grey", 4, 20, 2, 2);
+placeC("coffee_table", 4, 22, 2, -2);
+place("sofa_side_a", 2, 23, 22, -6);
+place("sofa_side_b", 6, 23, -12, -6);
+mount("painting_forest", 5, 17, 1);
 placeC("plant_tree", 1, 19, 1);
 placeC("lamp_blue", 8, 19, 1);
+placeC("bookshelf", 6, 19, 1);
+placeC("bookshelf", 7, 19, 1);
+place("rug_small_blue", 2, 25, 8, -4);
+placeC("plant_small", 1, 25, 1);
 placeC("plant_small", 8, 25, 1);
 
-// Meeting room
-place("rug_green", 13, 23, 8, 6);
-placeC("table_meeting", 13, 23, 3, -6);
-placeC("chair_front", 13, 20, 3, 4);
-placeC("chair_back", 13, 24, 3, 4);
-place("chair_left", 12, 22, 2, 0);
-place("chair_right", 16, 22, 4, 0);
-mount("chalkboard", 13, 17, 3);
+// Meeting room: two tables pushed together, chairs on all sides
+tableSet("table_meeting", 15, 22, 2);
+mount("chalkboard", 14, 17, 2);
 placeC("plant_tree", 19, 19, 1);
-placeC("wardrobe", 11, 25, 2, 0);
+placeC("wardrobe", 11, 19, 1);
+placeC("cabinet", 12, 19, 1);
+placeC("lamp_red", 18, 25, 1);
+placeC("plant_small", 11, 25, 1);
 
 // ── markers ──
 markers.push({ id: nextId++, name: "main", type: "spawn", x: 10 * T + 16, y: 14 * T + 16, width: 0, height: 0 });

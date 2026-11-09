@@ -36,9 +36,10 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 
 ## Props (furniture) & floors
 - Source sheets → `scripts/tools/build_props.py <uploads>` → `art/props/<room>/<name>.png` + `art/props/props.json` (name, file, size, tile footprint). Rooms: office, lounge, meeting, kitchen, bathroom; floor textures in `art/props/floors/`.
-- Scale rule: 16px-scale sheets (interiors, floors) ×2, 32px-scale sheets (kitchen, bathroom, walls, reference desk) ×1 — so props are proportional to the 33px character (chair ≈ 0.85×, desk ≈ 2.6× wide, tall props ≈ 2×).
+- Scale rule: **every prop at its native pixel density (×1)** — 16px-scale sheets are NOT upscaled (2× looked chunky next to the 1×-density characters). Proportions vs the 33px character: chair ≈ 0.4–0.65×, lamp ≈ 1×, plant ≈ 0.7–0.95×, counter ≈ 1.2×, fridge ≈ 1.85×, desk 85×37. Run `python3 scripts/tools/check_props.py` after adding props: it flags 2×-upscaled art and sizes outside each kind's range (must be all ✓).
+- Bathroom fixtures (toilet, urinal, stall, stall_open) are drawn procedurally in `build_props.py` (clean palette shapes); JPEG-sourced props are despeckled (`clean()`).
 - Every prop is recolored to `PROP_PALETTE` (colors sampled from the reference office; mirrored in `shared/src/palette.ts`). Translucent shadows are dropped.
-- Directions: chairs exist front/back/left/right (`chair_right` = mirrored `chair_left`); sofas front + both sides.
+- Directions: chairs exist front/back/left/right (`chair_right` = mirrored `chair_left`); sofas front + both sides. `tableSet()` in `gen-map.ts` places a table with chairs tucked in on all four sides.
 - Map objects: footprint 0 = no collision (rugs, wall decor, counter-top items); prop `layer: floor` (rugs) draws under characters; object property `z` lifts items standing on counters/desks above them.
 - `scripts/tools/slice_sheet.py` slices a sheet into numbered sprites + a contact sheet — use it to pick new props and add them to the MANIFEST.
 
