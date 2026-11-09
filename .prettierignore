@@ -1,8 +1,0 @@
-dist
-node_modules
-package-lock.json
-docs/references
-apps/client/public/assets
-packages/art/out
-apps/client/public/maps/*.tmj
-dist-types

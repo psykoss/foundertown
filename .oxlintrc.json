@@ -1,5 +1,0 @@
-{
-  "plugins": ["typescript", "react", "import", "unicorn"],
-  "categories": { "correctness": "error" },
-  "ignorePatterns": ["**/dist/**", "**/node_modules/**"]
-}
