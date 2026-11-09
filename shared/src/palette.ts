@@ -31,22 +31,33 @@ export const HAIR_RAMPS: Record<string, Ramp> = {
   auburn: ["#3a140e", "#6e2618", "#a03e24", "#c8603a"],
   blonde: ["#6e4a1c", "#b0823a", "#dcb05c", "#f2d88e"],
   gray: ["#3e3c44", "#6c6a74", "#9c9aa4", "#cfcdd6"],
-  pink: ["#5a1e3c", "#a03c6a", "#d8689a", "#f4a6c6"],
+  rose: ["#5e3a40", "#8a5560", "#b07a82", "#d1a3a6"], // dusty rose (retro palette)
 };
 
+/**
+ * Retro dim-pastel palette. Anchors: cream #e8d8c9 · slate #4b607f · orange #f3701e · charcoal #1f1d1c.
+ * Every ramp is muted/desaturated so the whole game reads as one warm, dusty retro scheme.
+ */
+export const RETRO = {
+  cream: "#e8d8c9",
+  slate: "#4b607f",
+  orange: "#f3701e",
+  charcoal: "#1f1d1c",
+} as const;
+
 export const CLOTH_RAMPS: Record<string, Ramp> = {
-  charcoal: ["#1c1c24", "#30303c", "#4a4a58", "#686878"],
-  white: ["#8e8a9c", "#c4c0d0", "#e6e4ee", "#ffffff"],
-  navy: ["#141c38", "#22305c", "#344a86", "#4e68aa"],
-  sky: ["#1e4a78", "#2f72a8", "#4a9ad0", "#7cc2ea"],
-  forest: ["#14301e", "#22502e", "#367444", "#56985e"],
-  mint: ["#2a6656", "#3e9078", "#5cb898", "#90dcbc"],
-  mustard: ["#6a4a10", "#a8761c", "#d4a032", "#f0c860"],
-  orange: ["#6e2a10", "#b04a1c", "#e07030", "#f8a060"],
-  red: ["#5a1418", "#922028", "#c4343a", "#e86058"],
-  plum: ["#381a3e", "#5c2c66", "#844490", "#ac6ab6"],
-  beige: ["#6a5440", "#a08668", "#c8ae8c", "#e8d6b6"],
-  denim: ["#1c2a44", "#2e4268", "#46608e", "#6884b0"],
+  charcoal: ["#1a1918", "#2a2826", "#3d3a37", "#55514c"],
+  cream: ["#9c8f82", "#c4b5a6", "#e8d8c9", "#f6efe7"],
+  slate: ["#263142", "#37465e", "#4b607f", "#6f84a3"],
+  dusk: ["#2b2f45", "#3d4360", "#565e82", "#7a82a4"],
+  sage: ["#3a4535", "#55644c", "#768767", "#9dab88"],
+  teal: ["#24403f", "#36595a", "#4f7a78", "#76a09b"],
+  mustard: ["#6b5124", "#94723a", "#bf9752", "#dcbc7d"],
+  orange: ["#8a3c12", "#c2561a", "#f3701e", "#f7a066"],
+  rust: ["#5c2a20", "#83402f", "#a85a45", "#c98370"],
+  rose: ["#6b4148", "#8f5c63", "#b37f84", "#d3a7a8"],
+  plum: ["#3d2d3d", "#574257", "#755c74", "#977f95"],
+  beige: ["#6e6052", "#958473", "#b9a893", "#d6c7b3"],
 };
 
 /** Fixed (non-recolorable) colors allowed in character art. */
@@ -62,21 +73,24 @@ export const FIXED_COLORS = {
   base3: "#ffffff",
   glassFrame: "#24202c",
   glassLens: "#a8d8f0",
-  shadow: "#1a1420", // only with alpha, in the shadow layer
+  shadow: "#1f1d1c", // only with alpha, in the shadow layer
 } as const;
 
 /** Environment palette (tiles + furniture). */
+/** Environment palette (tiles + furniture) — same retro dim-pastel family. */
 export const ENV_RAMPS: Record<string, Ramp> = {
-  grass: ["#2e5a32", "#3f7a3e", "#5a9a4c", "#7cba62"],
-  path: ["#6e6258", "#8e8276", "#aea294", "#cec2b2"],
-  wood: ["#4a2e1e", "#6e4630", "#94643e", "#b88656"],
-  wallFace: ["#5a5468", "#7a7490", "#9c96b0", "#c2bed4"],
-  wallTop: ["#2a2634", "#3c3648", "#504a5e", "#686078"],
-  carpet: ["#3a2a4e", "#4e3a68", "#664e86", "#8268a6"],
-  tileFloor: ["#8c8a96", "#aeacb8", "#cccad4", "#e6e4ec"],
-  leaf: ["#1e4a2a", "#2e6a38", "#44904a", "#66b25e"],
-  metal: ["#3a3e48", "#5a606c", "#828a96", "#b0b8c2"],
-  water: ["#1a3e6a", "#245a92", "#3a7eb8", "#62a6d8"],
+  grass: ["#3c4637", "#56634c", "#748366", "#98a585"],
+  path: ["#6e655c", "#90867a", "#b1a595", "#cfc2b1"],
+  wood: ["#4a3329", "#6c4b3a", "#8f6a51", "#b48d6d"],
+  wallFace: ["#8c7f71", "#b0a292", "#d2c4b4", "#e8d8c9"],
+  wallTop: ["#1f1d1c", "#2c3240", "#3b4558", "#4b607f"],
+  carpet: ["#4f3530", "#6e4a3f", "#8f6352", "#b2826c"],
+  tileFloor: ["#9a9084", "#bab0a3", "#d6cbbe", "#ebe1d5"],
+  leaf: ["#2e3a2f", "#435441", "#5f7258", "#839578"],
+  metal: ["#2b2f38", "#454c5a", "#677082", "#959dab"],
+  water: ["#263247", "#374863", "#4b607f", "#7187a6"],
+  accent: ["#8a3c12", "#c2561a", "#f3701e", "#f7a066"], // retro orange (lights, signage, pills)
+  paper: ["#9c8f82", "#c4b5a6", "#e8d8c9", "#f6efe7"], // cream (screens, cups, whiteboards)
 };
 
 export function hexToRgb(hex: string): RGB {

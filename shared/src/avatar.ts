@@ -107,9 +107,9 @@ export const DEFAULT_AVATAR: Avatar = {
     body: { id: "body_01" },
     face: { id: "face_01" },
     hair: { id: "hair_short_01", primary: "brown" },
-    top: { id: "top_tee_01", primary: "sky" },
-    bottom: { id: "bottom_pants_01", primary: "denim" },
-    shoes: { id: "shoes_sneakers_01", primary: "white", secondary: "charcoal" },
+    top: { id: "top_tee_01", primary: "slate" },
+    bottom: { id: "bottom_pants_01", primary: "charcoal" },
+    shoes: { id: "shoes_sneakers_01", primary: "cream", secondary: "orange" },
     outerwear: null,
     headwear: null,
     face_accessory: null,
@@ -124,7 +124,9 @@ export function rampLibraryFor(slot: Slot): Record<string, Ramp> {
 
 export function resolveRamp(slot: Slot, name: string | undefined): Ramp | undefined {
   if (!name) return undefined;
-  return rampLibraryFor(slot)[name];
+  const lib = rampLibraryFor(slot);
+  // unknown names (e.g. saved before a palette change) fall back to the first color instead of key colors
+  return lib[name] ?? Object.values(lib)[0];
 }
 
 export function skinRamp(name: string): Ramp {

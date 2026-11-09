@@ -9,7 +9,7 @@ export function integerZoom(viewH: number): number {
 export function setupCamera(scene: Phaser.Scene, target: Phaser.GameObjects.Sprite, worldW: number, worldH: number, onZoom: (z: number) => void) {
   const cam = scene.cameras.main;
   cam.setRoundPixels(true);
-  cam.setBackgroundColor("#1a1420");
+  cam.setBackgroundColor("#1f1d1c");
 
   const apply = () => {
     const z = integerZoom(scene.scale.height);

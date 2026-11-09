@@ -565,7 +565,8 @@ function hairCap(f: Frame, sideLen: number) {
     fromHead(r, p, (x, y) => y <= headBottom + 2 && !ear(x, y));
   } else {
     // top + the whole back half of the head down to the nape, around the ear
-    fromHead(r, p, (x, y) => !ear(x, y) && (y <= h.y + 7 || (x >= h.x + 9 && y <= headBottom) || (x >= h.x + 7 && y <= h.y + 6 + Math.max(6, sideLen))));
+    // no sideburn: below the hairline, hair only from the ear backwards
+    fromHead(r, p, (x, y) => !ear(x, y) && (y <= h.y + 7 || (x >= h.x + 10 && y <= headBottom)));
     r.rect(h.x + 1, h.y + 8, 4, 1); // fringe tip
   }
 }
@@ -640,8 +641,8 @@ function terrainTileset(): Canvas {
   };
 
   // grass variants
-  noise(TERRAIN.grass0, E.grass!, 1, 0.06);
-  const g1 = noise(TERRAIN.grass1, E.grass!, 2, 0.06);
+  noise(TERRAIN.grass0, E.grass!, 1, 0.025);
+  const g1 = noise(TERRAIN.grass1, E.grass!, 2, 0.025);
   for (let i = 0; i < 5; i++) {
     const x = Math.floor(g1.rand() * 28) + 2;
     const y = Math.floor(g1.rand() * 26) + 4;
@@ -649,11 +650,11 @@ function terrainTileset(): Canvas {
     c.set(g1.ox + x, g1.oy + y - 1, E.grass![3]!);
     c.set(g1.ox + x + 1, g1.oy + y, E.grass![1]!);
   }
-  const g2 = noise(TERRAIN.grass2, E.grass!, 3, 0.06);
+  const g2 = noise(TERRAIN.grass2, E.grass!, 3, 0.025);
   for (let i = 0; i < 4; i++) {
     const x = Math.floor(g2.rand() * 26) + 3;
     const y = Math.floor(g2.rand() * 26) + 3;
-    const col = i % 2 ? "#ffffff" : "#f0c860";
+    const col = i % 2 ? E.paper![3]! : E.accent![3]!;
     c.set(g2.ox + x, g2.oy + y, col);
     c.set(g2.ox + x + 1, g2.oy + y, col);
     c.set(g2.ox + x, g2.oy + y + 1, col);
@@ -748,18 +749,18 @@ function terrainTileset(): Canvas {
     c.fill(ox + 7, oy + 8, 18, 18, E.water![3]!);
     c.fill(ox + 15, oy + 8, 2, 18, E.metal![2]!);
     c.fill(ox + 7, oy + 16, 18, 1, E.metal![2]!);
-    for (let i = 0; i < 6; i++) c.set(ox + 9 + i, oy + 22 - i, "#ffffff");
+    for (let i = 0; i < 6; i++) c.set(ox + 9 + i, oy + 22 - i, E.paper![3]!);
   }
   // collision marker (only visible in Tiled; hidden in game)
   {
     const { ox, oy } = at(TERRAIN.collision);
     for (let i = 0; i < TILE; i++) {
-      c.set(ox + i, oy + i, "#e07030", 160);
-      c.set(ox + TILE - 1 - i, oy + i, "#c4343a", 160);
-      c.set(ox + i, oy, "#c4343a", 160);
-      c.set(ox + i, oy + TILE - 1, "#c4343a", 160);
-      c.set(ox, oy + i, "#c4343a", 160);
-      c.set(ox + TILE - 1, oy + i, "#c4343a", 160);
+      c.set(ox + i, oy + i, E.accent![2]!, 160);
+      c.set(ox + TILE - 1 - i, oy + i, E.accent![1]!, 160);
+      c.set(ox + i, oy, E.accent![1]!, 160);
+      c.set(ox + i, oy + TILE - 1, E.accent![1]!, 160);
+      c.set(ox, oy + i, E.accent![1]!, 160);
+      c.set(ox + TILE - 1, oy + i, E.accent![1]!, 160);
     }
   }
   // doormat
@@ -834,13 +835,13 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
       for (let x = 10; x < 90; x += 16) c.fill(x, 34, 1, 26, E.wood![1]!);
       // espresso machine
       new Region(96, 64, E.metal!).round(10, 4, 22, 22, 2).paint(c);
-      c.fill(14, 10, 4, 3, "#c4343a");
+      c.fill(14, 10, 4, 3, E.accent![2]!);
       new Region(96, 64, E.metal!).rect(17, 18, 8, 3).paint(c);
       // cups
       for (const x of [44, 52, 60]) new Region(96, 64, E.tileFloor!).round(x, 16, 6, 7, 1).paint(c);
       // register
       new Region(96, 64, E.wallTop!).round(72, 10, 16, 14, 1).paint(c);
-      c.fill(75, 12, 10, 5, "#5cb898");
+      c.fill(75, 12, 10, 5, E.water![3]!);
     },
   },
   {
@@ -879,10 +880,10 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
       new Region(64, 64, E.metal!).rect(8, 40, 3, 22).paint(c);
       new Region(64, 64, E.metal!).rect(53, 40, 3, 22).paint(c);
       new Region(64, 64, E.metal!).round(2, 4, 60, 40, 1).paint(c);
-      c.fill(5, 7, 54, 34, "#ffffff");
+      c.fill(5, 7, 54, 34, E.paper![3]!);
       c.fill(9, 12, 22, 1, E.water![1]!);
       c.fill(9, 16, 30, 1, E.water![1]!);
-      c.fill(9, 20, 16, 1, "#c4343a");
+      c.fill(9, 20, 16, 1, E.accent![2]!);
       new Region(64, 64, E.leaf!).rect(38, 22, 16, 14).paint(c);
     },
   },
@@ -917,8 +918,8 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
       new Region(32, 96, E.metal!).rect(14, 20, 4, 70).paint(c);
       new Region(32, 96, E.metal!).round(10, 88, 12, 6, 1).paint(c);
       new Region(32, 96, E.metal!).round(8, 8, 16, 14, 2).paint(c);
-      c.fill(11, 12, 10, 7, "#f0c860");
-      c.fill(12, 13, 4, 2, "#ffffff");
+      c.fill(11, 12, 10, 7, E.accent![3]!);
+      c.fill(12, 13, 4, 2, E.paper![3]!);
     },
   },
   {
@@ -927,8 +928,8 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
       new Region(32, 64, E.wallTop!).round(4, 6, 24, 54, 3).paint(c);
       new Region(32, 64, E.water!).round(7, 10, 18, 24, 2).paint(c);
       // capsule icon
-      c.fill(11, 18, 5, 6, "#c4343a");
-      c.fill(16, 18, 5, 6, "#ffffff");
+      c.fill(11, 18, 5, 6, E.accent![2]!);
+      c.fill(16, 18, 5, 6, E.paper![3]!);
       c.fill(12, 17, 8, 1, E.wallTop![0]!);
       c.fill(12, 24, 8, 1, E.wallTop![0]!);
       new Region(32, 64, E.metal!).round(9, 40, 14, 10, 1).paint(c);

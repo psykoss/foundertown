@@ -8,7 +8,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
     parent,
     pixelArt: true, // nearest-neighbour, no antialias, rounded pixels
     roundPixels: true,
-    backgroundColor: "#1a1420",
+    backgroundColor: "#1f1d1c",
     scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
     scene: [BootScene, WorldScene],
     fps: { target: 60 },
