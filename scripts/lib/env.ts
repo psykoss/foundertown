@@ -7,6 +7,4 @@ export const TERRAIN = {
 } as const;
 export const TERRAIN_COLUMNS = 8;
 export const TERRAIN_COUNT = 24;
-export const LIBRARY_FLOORS: Record<number, string> = {
-  16: "floor_yellow_tile", 17: "floor_bath_tile", 18: "floor_concrete", 19: "floor_herringbone", 20: "floor_red_tile",
-};
+export const LIBRARY_FLOORS: Record<number, string> = { 16: "floor_yellow_tile" }; // 17–20 unused (removed assets)

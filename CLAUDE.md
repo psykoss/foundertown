@@ -37,10 +37,9 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 ## Props (furniture) & floors
 - Source sheets → `scripts/tools/build_props.py <uploads>` → `art/props/<room>/<name>.png` + `art/props/props.json` (name, file, size, tile footprint). Rooms: office, lounge, meeting, kitchen; floor textures in `art/props/floors/`.
 - **All props are 32×32-tile detail.** 16px-scale sheets (interiors) are converted with Scale2x (`scale2x()`: rebuilds diagonals at 2×, no 2×2 blocks) + `reshade()` (top-left light: 1px highlight/shadow rim one palette step apart). 32px-scale sources (kitchen, walls, reference desk, reference bookshelves) are used ×1. Run `python3 scripts/tools/check_props.py` after adding props — it flags plain 2×-upscaled art and sizes outside 32px-world ranges (must be all ✓).
-- Cabinets/shelves are the reference office bookshelf (`gather_shelves()` in build_props: `bookshelf` 32×32, `bookshelf_tall` 32×44, `bookshelf_wide` 62×44, `plant_pot` to put on top with `z`).
-- No bathroom: that room is a library (shelf wall, reading corner, study table).
+- **Kept assets only** (`KEEP` in build_props.py): kitchen props (counters, sinks, stove, fridge, shelf, microwave, mixer, coffee machine), office `desk` + `office_chair`, plants (`plant_tree`, `plant_small`, `plant_desk`, `plant_pot`), and the kitchen floor texture. Everything else was removed; library, lounge and meeting room are empty rooms (plants only) waiting for new art. Add props by extending `KEEP` + MANIFEST.
 - Every prop is recolored to `PROP_PALETTE` (colors sampled from the reference office; mirrored in `shared/src/palette.ts`). Translucent shadows are dropped.
-- Directions: chairs exist front/back/left/right (`chair_right` = mirrored `chair_left`); sofas front + both sides. `tableSet()` in `gen-map.ts` places a table with chairs tucked in on all four sides.
+- `tableSet()` in `gen-map.ts` (table + chairs on four sides) is kept for when table/chair art returns.
 - Map objects: footprint 0 = no collision (rugs, wall decor, counter-top items); prop `layer: floor` (rugs) draws under characters; object property `z` lifts items standing on counters/desks above them.
 - `scripts/tools/slice_sheet.py` slices a sheet into numbered sprites + a contact sheet — use it to pick new props and add them to the MANIFEST.
 

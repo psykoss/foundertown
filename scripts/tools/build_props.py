@@ -308,11 +308,18 @@ def desk_parts(uploads):
     chair = max(parts[1:], key=lambda p: p.width * p.height)
     return {"desk": desk, "chair": chair}
 
+# Props kept in the game (everything else in MANIFEST is not built): kitchen, office desk + chair, plants.
+KEEP = {"desk", "office_chair", "plant_tree", "plant_small", "plant_desk", "plant_pot",
+        "counter_drawers", "counter", "counter_cabinet", "counter_doors", "sink", "sink_double", "stove",
+        "fridge", "kitchen_shelf", "microwave", "mixer", "coffee_machine"}
+FLOORS_KEEP = {"floor_yellow_tile"}
+
 def main(uploads):
     out_dir = os.path.join(ROOT, "art/props")
     meta = []
     dp = None
     for name, room, src, scale, fp in MANIFEST:
+        if name not in KEEP: continue
         kind = src[0]
         if kind == "desk_part":
             dp = dp or desk_parts(uploads); im = dp[src[1]]
@@ -333,18 +340,18 @@ def main(uploads):
         rel = f"{room}/{name}.png"
         im.save(os.path.join(out_dir, rel))
         meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})
-    for name, im, fp in gather_shelves(uploads):
+    for name, im, fp in [g for g in gather_shelves(uploads) if g[0] in KEEP]:
         rel = f"office/{name}.png"; im.save(os.path.join(out_dir, rel))
         meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})
     # floor textures (16px patterns → 32px tiles)
     fl, _ = sheet("floors", uploads)
     tex = {"floor_red_tile": (176, 80), "floor_yellow_tile": (176, 112), "floor_bath_tile": (176, 144), "floor_concrete": (176, 176), "floor_herringbone": (176, 208)}
     os.makedirs(os.path.join(out_dir, "floors"), exist_ok=True)
-    for n, (x, y) in tex.items():
+    for n, (x, y) in [t for t in tex.items() if t[0] in FLOORS_KEEP]:
         t = quantize(fl.crop((x, y, x + 32, y + 32)))
         t.save(os.path.join(out_dir, "floors", n + ".png"))
     json.dump({"props": meta}, open(os.path.join(out_dir, "props.json"), "w"), indent=1)
-    print(f"{len(meta)} props + {len(tex)} floor textures → art/props/")
+    print(f"{len(meta)} props + {len(FLOORS_KEEP)} floor textures → art/props/")
 
 if __name__ == "__main__":
     main(sys.argv[1] if len(sys.argv) > 1 else "/mnt/user-data/uploads")
