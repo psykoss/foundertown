@@ -392,6 +392,8 @@ const drawers: Record<string, Drawer> = {
     if (f.dir === "down") r.round(h.x, h.y + 8, h.w, 16, 2);
     else if (f.dir === "up") r.round(h.x, h.y + 6, h.w, 18, 3);
     else r.round(h.x + 8, h.y + 6, 9, 17, 2);
+    // ears stay visible (this layer is drawn over the head in the back view)
+    for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (isEar(f, x, y)) r.px(x, y, false);
   },
   "hair/hair_bun_01.png": (f) => {
     const h = f.p.head;
@@ -532,21 +534,28 @@ function hairDetail(f: Frame, r: Region) {
   }
 }
 
+/** Ear pixels (measured from the reference head) — hair never covers them. */
+function isEar(f: Frame, x: number, y: number): boolean {
+  const h = f.p.head;
+  if (f.dir === "left") return x >= h.x + 9 && x <= h.x + 13 && y >= h.y + 10 && y <= h.y + 15;
+  return (x <= h.x + 1 || x >= h.x + h.w - 2) && y >= h.y + 9 && y <= h.y + 12;
+}
+
 function hairCap(f: Frame, sideLen: number) {
   const { p } = f;
   const h = p.head;
   const r = f.headReg("primary");
   const headBottom = HEAD_BOTTOM[f.dir] + p.m.headDy;
+  const ear = (x: number, y: number) => isEar(f, x, y);
   if (f.dir === "down") {
-    fromHead(r, p, (x, y) => y <= h.y + 7 || (y <= h.y + 6 + sideLen && (x <= h.x + 3 || x >= h.x + h.w - 4)));
+    fromHead(r, p, (x, y) => !ear(x, y) && (y <= h.y + 7 || (y <= h.y + 6 + sideLen && (x <= h.x + 3 || x >= h.x + h.w - 4))));
     r.rect(h.x + 4, h.y + 8, 6, 1).rect(h.x + 4, h.y + 9, 3, 1); // swept fringe
   } else if (f.dir === "up") {
-    // the whole back of the head is hair, down to the nape; only the ears stay skin
-    const isEar = (x: number, y: number) => (x <= h.x + 1 || x >= h.x + h.w - 2) && y >= h.y + 9 && y <= h.y + 12;
-    fromHead(r, p, (x, y) => y <= headBottom + 2 && !isEar(x, y)); // +2: covers the nape down to the collar
+    // the whole back of the head is hair, down to the collar; the ears stay visible
+    fromHead(r, p, (x, y) => y <= headBottom + 2 && !ear(x, y));
   } else {
-    // top + the whole back half of the head down to the nape
-    fromHead(r, p, (x, y) => y <= h.y + 7 || (x >= h.x + 9 && y <= headBottom) || (x >= h.x + 7 && y <= h.y + 6 + Math.max(6, sideLen)));
+    // top + the whole back half of the head down to the nape, around the ear
+    fromHead(r, p, (x, y) => !ear(x, y) && (y <= h.y + 7 || (x >= h.x + 9 && y <= headBottom) || (x >= h.x + 7 && y <= h.y + 6 + Math.max(6, sideLen))));
     r.rect(h.x + 1, h.y + 8, 4, 1); // fringe tip
   }
 }
