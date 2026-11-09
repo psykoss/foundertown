@@ -14,15 +14,14 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CHAR_H = 33
 
 # kind → (min h, max h) in px. Order matters: first keyword match wins.
-RANGES = [
-    ("plant_desk", (8, 20)), ("monitor", (16, 32)), ("counter", (32, 44)), ("office_chair", (14, 24)), ("chair", (12, 26)), ("desk", (28, 44)), ("table", (18, 44)),
-    ("sofa", (20, 60)), ("lamp", (24, 44)), ("plant_tree", (24, 44)), ("plant_small", (16, 34)),
-    ("plant_desk", (8, 20)), ("bookshelf", (24, 48)), ("shelf", (24, 64)), ("cabinet", (24, 48)),
-    ("wardrobe", (32, 56)), ("counter", (32, 44)), ("sink", (32, 48)), ("stove", (32, 44)),
-    ("fridge", (44, 64)), ("microwave", (10, 28)), ("mixer", (10, 28)), ("coffee", (10, 32)),
-    ("door", (44, 64)), ("window", (14, 40)), ("painting", (8, 24)), ("chalkboard", (16, 32)),
-    ("toilet", (20, 32)), ("urinal", (18, 30)), ("vanity", (40, 60)), ("stall", (48, 64)),
-    ("monitor", (16, 32)), ("rug", (0, 999)),
+RANGES = [  # 32px world (props drawn at 32×32 tile detail)
+    ("plant_desk", (16, 32)), ("plant_pot", (8, 20)), ("monitor", (28, 48)), ("counter", (32, 44)),
+    ("office_chair", (14, 28)), ("chair", (20, 46)), ("desk", (28, 44)), ("table", (36, 80)),
+    ("sofa", (40, 120)), ("lamp", (40, 70)), ("plant_tree", (40, 70)), ("plant_small", (30, 50)),
+    ("bookshelf", (24, 48)), ("sink", (32, 48)), ("stove", (32, 44)), ("fridge", (44, 64)),
+    ("kitchen_shelf", (44, 64)), ("microwave", (10, 28)), ("mixer", (10, 28)), ("coffee", (10, 32)),
+    ("door", (44, 64)), ("window", (30, 56)), ("painting", (18, 32)), ("chalkboard", (30, 50)),
+    ("rug", (0, 999)),
 ]
 
 def upscaled(im):

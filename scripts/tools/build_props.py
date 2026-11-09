@@ -52,6 +52,52 @@ def quantize(im):
             px[x, y] = c + (255,)
     return im
 
+def scale2x(im):
+    """EPX/Scale2x: pixel-art upscale that rebuilds diagonals at 2× instead of copying 2×2 blocks."""
+    im = im.convert("RGBA"); W, H = im.size; src = im.load()
+    out = Image.new("RGBA", (W * 2, H * 2)); o = out.load()
+    g = lambda x, y: src[min(max(x, 0), W - 1), min(max(y, 0), H - 1)]
+    for y in range(H):
+        for x in range(W):
+            P, A, B, C, D = g(x, y), g(x, y - 1), g(x + 1, y), g(x - 1, y), g(x, y + 1)
+            o[2 * x, 2 * y] = A if C == A and C != D and A != B else P
+            o[2 * x + 1, 2 * y] = B if A == B and A != C and B != D else P
+            o[2 * x, 2 * y + 1] = C if D == C and D != B and C != A else P
+            o[2 * x + 1, 2 * y + 1] = D if B == D and B != A and D != C else P
+    return out
+
+def _nearest(rgb):
+    r, g, b = rgb
+    return min(_P, key=lambda p: 2 * (p[0] - r) ** 2 + 4 * (p[1] - g) ** 2 + 3 * (p[2] - b) ** 2)
+
+def _step(c, toward, k):
+    """Next palette color from c toward `toward` (lighter/darker), or c if none differs."""
+    for t in (k, k * 1.6, k * 2.4):
+        n = _nearest(tuple(int(c[i] * (1 - t) + toward[i] * t) for i in range(3)))
+        if n != c[:3]: return n
+    return c[:3]
+
+def reshade(im):
+    """32px shading pass: light from the top-left → 1px highlight rim inside top/left edges,
+    1px shadow rim inside bottom/right edges, one palette step each. Outlines/darks untouched."""
+    im = im.copy(); px = im.load(); W, H = im.size
+    src = im.copy().load()
+    op = lambda x, y: 0 <= x < W and 0 <= y < H and src[x, y][3] > 0
+    lum = lambda c: 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+    for y in range(H):
+        for x in range(W):
+            c = src[x, y]
+            if not c[3] or lum(c) < 70: continue
+            if not all(op(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))): continue  # edge px
+            dark = lambda q: lum(q) < lum(c) - 45
+            up, left = src[x, y - 1], src[x - 1, y]
+            down, right = src[x, y + 1], src[x + 1, y]
+            if dark(up) or dark(left):
+                px[x, y] = _step(c, (255, 255, 255), 0.18) + (255,)
+            elif dark(down) or dark(right):
+                px[x, y] = _step(c, (48, 50, 91), 0.18) + (255,)
+    return im
+
 def trim(im):
     bb = im.getbbox()
     return im.crop(bb) if bb else im
@@ -88,38 +134,34 @@ MANIFEST = [
     # ── office ──
     ("desk", "office", ("desk_part", "desk"), 1, (3, 1)),
     ("office_chair", "office", ("desk_part", "chair"), 1, (1, 1)),
-    ("bookshelf", "office", ("sub", "interiors", 33, (0, 0, 32, 32)), 1, (2, 1)),
-    ("shelf_white", "office", ("c", "interiors", 45), 1, (1, 1)),
-    ("cabinet", "office", ("c", "interiors", 146), 1, (2, 1)),
-    ("wardrobe", "office", ("c", "interiors", 145), 1, (2, 1)),
-    ("plant_tree", "office", ("c", "interiors", 130), 1, (1, 1)),
-    ("plant_small", "office", ("c", "interiors", 134), 1, (1, 1)),
-    ("plant_desk", "office", ("c", "interiors", 148), 1, (1, 1)),
-    ("lamp_blue", "office", ("c", "interiors", 161), 1, (1, 1)),
-    ("lamp_red", "office", ("c", "interiors", 162), 1, (1, 1)),
-    ("chalkboard", "office", ("c", "interiors", 124), 1, (2, 1)),
-    ("monitor_desk", "office", ("c", "interiors", 12), 1, (1, 1)),
-    ("painting_sunset", "office", ("c", "interiors", 50), 1, (0, 0)),
-    ("painting_sea", "office", ("c", "interiors", 57), 1, (0, 0)),
-    ("painting_forest", "office", ("c", "interiors", 56), 1, (0, 0)),
-    ("window", "office", ("c", "interiors", 63), 1, (0, 0)),
-    ("window_wide", "office", ("c", "interiors", 70), 1, (0, 0)),
-    ("rug_red", "office", ("c", "interiors", 38), 1, (0, 0)),
-    ("rug_blue", "office", ("c", "interiors", 24), 1, (0, 0)),
-    ("rug_small_blue", "office", ("c", "interiors", 51), 1, (0, 0)),
-    ("rug_green", "office", ("c", "interiors", 72), 1, (0, 0)),
+    ("plant_tree", "office", ("c", "interiors", 130), 2, (1, 1)),
+    ("plant_small", "office", ("c", "interiors", 134), 2, (1, 1)),
+    ("plant_desk", "office", ("c", "interiors", 148), 2, (1, 1)),
+    ("lamp_blue", "office", ("c", "interiors", 161), 2, (1, 1)),
+    ("lamp_red", "office", ("c", "interiors", 162), 2, (1, 1)),
+    ("chalkboard", "office", ("c", "interiors", 124), 2, (2, 1)),
+    ("monitor_desk", "office", ("c", "interiors", 12), 2, (1, 1)),
+    ("painting_sunset", "office", ("c", "interiors", 50), 2, (0, 0)),
+    ("painting_sea", "office", ("c", "interiors", 57), 2, (0, 0)),
+    ("painting_forest", "office", ("c", "interiors", 56), 2, (0, 0)),
+    ("window", "office", ("c", "interiors", 63), 2, (0, 0)),
+    ("window_wide", "office", ("c", "interiors", 70), 2, (0, 0)),
+    ("rug_red", "office", ("c", "interiors", 38), 2, (0, 0)),
+    ("rug_blue", "office", ("c", "interiors", 24), 2, (0, 0)),
+    ("rug_small_blue", "office", ("c", "interiors", 51), 2, (0, 0)),
+    ("rug_green", "office", ("c", "interiors", 72), 2, (0, 0)),
     # ── lounge ──
-    ("sofa_red", "lounge", ("c", "interiors", 46), 1, (3, 1)),
-    ("sofa_grey", "lounge", ("b", "interiors", (16, 1150, 47, 34)), 1, (3, 1)),
-    ("sofa_side_a", "lounge", ("b", "interiors", (57, 1222, 22, 58)), 1, (1, 2)),
-    ("sofa_side_b", "lounge", ("b", "interiors", (81, 1222, 22, 58)), 1, (1, 2)),
-    ("coffee_table", "lounge", ("c", "interiors", 29), 1, (2, 1)),
+    ("sofa_red", "lounge", ("c", "interiors", 46), 2, (3, 1)),
+    ("sofa_grey", "lounge", ("b", "interiors", (16, 1150, 47, 34)), 2, (3, 1)),
+    ("sofa_side_a", "lounge", ("b", "interiors", (57, 1222, 22, 58)), 2, (1, 2)),
+    ("sofa_side_b", "lounge", ("b", "interiors", (81, 1222, 22, 58)), 2, (1, 2)),
+    ("coffee_table", "lounge", ("c", "interiors", 29), 2, (2, 1)),
     # ── meeting ──
-    ("table_meeting", "meeting", ("c", "interiors", 17), 1, (2, 2)),
-    ("chair_front", "meeting", ("c", "interiors", 75), 1, (1, 1)),
-    ("chair_back", "meeting", ("c", "interiors", 86), 1, (1, 1)),
-    ("chair_left", "meeting", ("c", "interiors", 79), 1, (1, 1)),
-    ("chair_right", "meeting", ("c", "interiors", 79, "flip"), 1, (1, 1)),
+    ("table_meeting", "meeting", ("c", "interiors", 17), 2, (2, 2)),
+    ("chair_front", "meeting", ("c", "interiors", 75), 2, (1, 1)),
+    ("chair_back", "meeting", ("c", "interiors", 86), 2, (1, 1)),
+    ("chair_left", "meeting", ("c", "interiors", 79), 2, (1, 1)),
+    ("chair_right", "meeting", ("c", "interiors", 79, "flip"), 2, (1, 1)),
     # ── kitchen (32px-scale sheet, ×1) ──
     ("counter_drawers", "kitchen", ("c", "kitchen", 119), 1, (1, 1)),
     ("counter", "kitchen", ("c", "kitchen", 120), 1, (1, 1)),
@@ -133,12 +175,10 @@ MANIFEST = [
     ("microwave", "kitchen", ("c", "kitchen", 22), 1, (0, 0)),
     ("mixer", "kitchen", ("c", "kitchen", 72), 1, (0, 0)),
     ("coffee_machine", "kitchen", ("sub", "kitchen", 21, (0, 0, 16, 29)), 1, (0, 0)),
-    ("table_dining", "kitchen", ("c", "interiors", 19), 1, (2, 2)),
+    ("table_dining", "kitchen", ("c", "interiors", 19), 2, (2, 2)),
     ("door_white", "kitchen", ("b", "walls", (0, 293, 32, 68)), 1, (0, 0)),
     ("door_metal", "kitchen", ("b", "walls", (209, 293, 64, 68)), 1, (0, 0)),
     # ── bathroom (JPEG sheet, ×1; toilet/urinal/stall are drawn clean in draw_bathroom()) ──
-    ("vanity_double", "bathroom", ("b", "bathroom", (201, 0, 61, 56)), 1, (2, 1)),
-    ("vanity", "bathroom", ("b", "bathroom", (261, 0, 58, 56)), 1, (2, 1)),
 ]
 
 def clean(im, min_size=6):
@@ -221,6 +261,46 @@ def draw_stall(open_door=False):
         p.rect(15, 8, 4, 2, "#6fae81")                                                   # vacant indicator
     return p.im
 
+def gather_shelves(uploads):
+    """
+    Bookshelves in the reference office style (white top, grey frame, colored books), sampled from the
+    reference screenshot (8×, offset 2,6). Native shelf: cols 30–61, top surface rows 18–23, four shelf
+    units of 6 rows (24–47), bottom rows 48–49. Bigger variants repeat shelf units / join two shelves.
+    """
+    from collections import Counter
+    src = Image.open(os.path.join(uploads, "69e95f1f-image.png")).convert("RGB"); sp = src.load()
+    s, ox, oy = 8, 2, 6
+    def cell(x, y):
+        c = Counter(sp[ox + x * s + dx, oy + y * s + dy] for dx in range(2, 6) for dy in range(2, 6))
+        return c.most_common(1)[0][0]
+    grid = {(x, y): cell(x, y) for y in range(56) for x in range(97)}
+    TOP, EDGE, WALL = (239, 237, 246), (137, 149, 171), {(110, 123, 125), (131, 145, 148), (89, 99, 103)}
+    def shelf_rows():
+        rows = []
+        for y in range(18, 50):
+            row = [grid[(x, y)] for x in range(30, 62)]
+            if y <= 23: row = [EDGE] + [TOP] * 30 + [EDGE]  # clean top surface (plant becomes its own prop)
+            rows.append(row)
+        return rows
+    def to_img(rows):
+        im = Image.new("RGBA", (len(rows[0]), len(rows)))
+        for y, r in enumerate(rows):
+            for x, c in enumerate(r): im.putpixel((x, y), c + (255,))
+        return quantize(im)
+    base = shelf_rows()                              # 32 rows: top 0–5, units 6–11/12–17/18–23/24–29, bottom 30–31
+    unit = base[12:18]
+    tall = base[:30] + unit + unit + base[30:]       # 6 book rows → 44 px
+    wide = [l[:-1] + r[1:] for l, r in zip(tall, tall)]  # two tall shelves sharing the middle post
+    plant = Image.new("RGBA", (11, 13))
+    for y in range(11, 24):
+        for x in range(31, 42):
+            c = grid[(x, y)]
+            if c in WALL or c == TOP: continue
+            if y >= 18 and not (32 <= x <= 39): continue  # below the leaves only the pot remains
+            plant.putpixel((x - 31, y - 11), c + (255,))
+    return [("bookshelf", to_img(base), (1, 1)), ("bookshelf_tall", to_img(tall), (1, 1)),
+            ("bookshelf_wide", to_img(wide), (2, 1)), ("plant_pot", trim(quantize(plant)), (0, 0))]
+
 def desk_parts(uploads):
     im, boxes = sheet("desk", uploads)
     parts = sorted([im.crop((b[0], b[1], b[2] + 1, b[3] + 1)) for b in boxes], key=lambda p: -p.width * p.height)
@@ -243,7 +323,8 @@ def main(uploads):
             im = trim(component(src[1], src[2], uploads).crop(tuple(src[3][:2]) + (src[3][0] + src[3][2], src[3][1] + src[3][3])))
         else:
             im = box(src[1], src[2], uploads)
-        if scale != 1: im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+        if scale == 2: im = reshade(quantize(scale2x(quantize(im))))  # 16px art → 32px detail + shading
+        elif scale != 1: im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
         im = trim(quantize(im))
         if src[0] == "b" and src[1] == "bathroom": im = trim(clean(im))
         if fp != (0, 0):  # footprint from the sprite's own width (1 row deep; side sofas 2)
@@ -252,9 +333,8 @@ def main(uploads):
         rel = f"{room}/{name}.png"
         im.save(os.path.join(out_dir, rel))
         meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})
-    for name, im, fp in [("toilet", draw_toilet(), (1, 1)), ("urinal", draw_urinal(), (1, 1)),
-                         ("stall", draw_stall(), (1, 1)), ("stall_open", draw_stall(True), (1, 1))]:
-        rel = f"bathroom/{name}.png"; im.save(os.path.join(out_dir, rel))
+    for name, im, fp in gather_shelves(uploads):
+        rel = f"office/{name}.png"; im.save(os.path.join(out_dir, rel))
         meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})
     # floor textures (16px patterns → 32px tiles)
     fl, _ = sheet("floors", uploads)
