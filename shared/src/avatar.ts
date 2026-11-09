@@ -78,11 +78,18 @@ export interface ItemDef {
   slot: Slot;
   name: string;
   parts: ItemPart[];
+  /** Hair only: parts used instead of `parts` while headwear is worn (voluminous hair flattened to fit under a hat). */
+  partsUnderHat?: ItemPart[];
   /** Which key ramps this item uses (besides skin, which always follows the avatar skin). */
   channels: Channel[];
   tags?: string[];
   /** Locked items are unlocked by gameplay (rewards). */
   unlock?: string;
+}
+
+/** The parts of an item as worn by this avatar (hair switches to its under-hat parts when headwear is on). */
+export function itemParts(item: ItemDef, a: Avatar): ItemPart[] {
+  return item.slot === "hair" && item.partsUnderHat && a.slots.headwear ? item.partsUnderHat : item.parts;
 }
 
 export interface ItemRegistry {
@@ -106,7 +113,7 @@ export const DEFAULT_AVATAR: Avatar = {
   slots: {
     body: { id: "body_01" },
     face: { id: "face_01" },
-    hair: { id: "hair_short_01", primary: "brown" },
+    hair: { id: "hair_swept_01", primary: "brown" },
     top: { id: "top_tee_01", primary: "blue" },
     bottom: { id: "bottom_pants_01", primary: "navy" },
     shoes: { id: "shoes_sneakers_01", primary: "white", secondary: "grey" },

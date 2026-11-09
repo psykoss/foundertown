@@ -53,7 +53,7 @@ for (const item of reg.items) {
   if (ids.has(item.id)) err(`items.json: duplicate id ${item.id}`);
   ids.add(item.id);
   if (!SLOTS.includes(item.slot)) err(`items.json: ${item.id} has unknown slot ${item.slot}`);
-  for (const part of item.parts) {
+  for (const part of [...item.parts, ...(item.partsUnderHat ?? [])]) {
     if (!LAYERS.includes(part.layer)) err(`items.json: ${item.id} unknown layer ${part.layer}`);
     const file = path.join(A, "characters", part.sheet);
     if (!fs.existsSync(file)) {

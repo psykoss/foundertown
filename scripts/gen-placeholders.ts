@@ -395,6 +395,8 @@ const drawers: Record<string, Drawer> = {
     // ears stay visible (this layer is drawn over the head in the back view)
     for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (isEar(f, x, y)) r.px(x, y, false);
   },
+  "hair/hair_swept_01.png": (f) => sweptHair(f),
+  "hair/hair_swept_01_hat.png": (f) => sweptHair(f, true),
   "hair/hair_bun_01.png": (f) => {
     const h = f.p.head;
     const bun = f.reg("primary");
@@ -551,6 +553,88 @@ function isEar(f: Frame, x: number, y: number): boolean {
   return (x <= h.x + 2 || x >= h.x + h.w - 3) && ry >= 9 && ry <= 13;
 }
 
+/**
+ * Swept-back hair with volume: a hand-drawn shape that is bigger than the head (2 px taller, 2 px wider),
+ * unlike the caps cut from the head silhouette. Templates are rows 27… of the idle frame; digits are the
+ * shade (1 dark strand · 2 base · 3 highlight streak), edge pixels become the outline. They ride the head bob.
+ */
+const SWEPT_TOP = 27;
+const SWEPT: Record<SheetDir, string[]> = {
+  down: [
+    "............22222222............",
+    "..........223333333322..........",
+    "........2233333333333322........",
+    ".......233333223333333322.......",
+    "......23332221333333222332......",
+    "......23322213333322123332......",
+    "......22222133332221222222......",
+    "......22221222222212222222......",
+    "......2221222222....222222......",
+    "......2222222........22222......",
+    "......22222...........2222......",
+    ".........2............2.........",
+  ],
+  up: [
+    "............22222222............",
+    "..........223333333322..........",
+    "........2233333333333322........",
+    ".......233333333333333322.......",
+    "......23333223333332233332......",
+    "......23322123333321223332......",
+    "......22221223333221222222......",
+    "......22212222222222122222......",
+    "......22212222122222122222......",
+    "......22212221222122122222......",
+    "......22222221222122222222......",
+  ],
+  left: [
+    "...........222222222............",
+    ".........2233333333322..........",
+    "........233333333333322.........",
+    ".......23333223333333322........",
+    ".......233222133333322232.......",
+    ".......2222213333322212322......",
+    ".......2222122222221222222......",
+    ".......2211222222212222222......",
+    "........222222222122222222......",
+    "........222222221222222222......",
+    ".............2222222222222......",
+    "...............22222222222......",
+    "...............222...2222.......",
+    "...............222...2222.......",
+    "................22...222........",
+    "................22...222........",
+    "....................2222........",
+    "..................22222.........",
+    "..................222...........",
+  ],
+};
+
+/** `underHat`: clipped to the head silhouette so nothing pokes out around headwear. */
+function sweptHair(f: Frame, underHat = false) {
+  const { p } = f;
+  const dyHead = p.head.y - 29;
+  const rows = SWEPT[f.dir];
+  const m = headMask(p);
+  const inHead = (x: number, y: number) => x >= 0 && y >= 0 && x < FRAME_W && y < FRAME_H && m[y * FRAME_W + x] === 1;
+  const tpl = (x: number, y: number) => rows[y - dyHead - SWEPT_TOP]?.[x] ?? ".";
+  const headBottom = HEAD_BOTTOM[f.dir] + p.m.headDy;
+  const r = f.reg("primary", inHead, 0, (x, y) => {
+    const t = tpl(x, y);
+    if (t !== ".") return Number(t);
+    // back view below the template: hair falling to the nape — darker toward the bottom, a few strands
+    return y >= headBottom - 1 || (x % 4 === 1 && (x + y) % 5 !== 0) ? 1 : 2;
+  });
+  for (let y = 0; y < FRAME_H; y++)
+    for (let x = 0; x < FRAME_W; x++) {
+      const back = f.dir === "up" && y - dyHead >= SWEPT_TOP + rows.length && y <= headBottom + 2 && inHead(x, y);
+      if ((tpl(x, y) !== "." || back) && !isEar(f, x, y) && (!underHat || inHead(x, y))) r.px(x, y);
+    }
+}
+
+/** Side view: columns of the head (from its front edge) that stay face; hair fills everything behind. */
+const SIDE_FACE_W = 8;
+
 function hairCap(f: Frame, sideLen: number) {
   const { p } = f;
   const h = p.head;
@@ -564,9 +648,9 @@ function hairCap(f: Frame, sideLen: number) {
     // the whole back of the head is hair, down to the collar; the ears stay visible
     fromHead(r, p, (x, y) => y <= headBottom + 2 && !ear(x, y));
   } else {
-    // top + the whole back half of the head down to the nape, around the ear
-    // no sideburn: below the hairline, hair only from the ear backwards
-    fromHead(r, p, (x, y) => !ear(x, y) && (y <= h.y + 7 || (x >= h.x + 10 && y <= headBottom)));
+    // the whole side of the head is hair, down to the nape: everything behind the face (eye + cheek),
+    // in front of, behind and under the ear — only the ear itself stays skin
+    fromHead(r, p, (x, y) => !ear(x, y) && (y <= h.y + 7 || (x >= h.x + SIDE_FACE_W && y <= headBottom)));
     r.rect(h.x + 1, h.y + 8, 4, 1); // fringe tip
   }
 }
@@ -810,7 +894,7 @@ function main() {
   const reg: ItemRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, "art/characters/items.json"), "utf8"));
   const missing: string[] = [];
   for (const item of reg.items)
-    for (const part of item.parts) {
+    for (const part of [...item.parts, ...(item.partsUnderHat ?? [])]) {
       const drawer = drawers[part.sheet];
       if (!drawer) {
         if (!fs.existsSync(path.join(OUT, "characters", part.sheet))) missing.push(part.sheet);
