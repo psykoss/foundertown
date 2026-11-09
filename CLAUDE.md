@@ -38,7 +38,7 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 - Items: `art/characters/items.json` (source) → copied to `client/public/assets/characters/items.json`. An item = slot + parts (layer + sheet) + channels (+ optional `unlock`).
 - Layer draw order per direction: `LAYER_ORDER` in `shared/src/avatar.ts` (facing up, back layers move in front).
 - The base body is split into `body` (torso/limbs) and `head` layers; `head` is drawn above top/outerwear so clothing never covers the chin.
-- The head is an oval (reference silhouette). Hair and headwear are cut from that silhouette (`fromHead`) and must not grow outside it — otherwise the head reads as round.
+- The head is an oval (reference silhouette). Hair and headwear are cut from that silhouette (`fromHead`) and must not grow outside it — otherwise the head reads as round. Use `f.headReg()` for them: black outline only on the outer silhouette, the ramp's dark shade where hair meets skin (no black line across the forehead).
 - Compositor bakes each avatar once into a single texture (`client/src/game/avatar/compositor.ts`), cached by appearance.
 
 ## Workflow

@@ -46,10 +46,15 @@ class Frame {
     return this.p.dir;
   }
   /** A shaded region with the black outline used by all character art. */
-  reg(ch: Ch | Ramp4): Region {
+  reg(ch: Ch | Ramp4, inside?: (x: number, y: number) => boolean): Region {
     const r = new Region(FRAME_W, FRAME_H, typeof ch === "string" ? KEY_RAMPS[ch] : ch);
-    this.ops.push(() => r.paint(this.c, 0, 0, { outlineColor: BLACK }));
+    this.ops.push(() => r.paint(this.c, 0, 0, { outlineColor: BLACK, inside }));
     return r;
+  }
+  /** Region for hair/headwear: black outline only on the head silhouette, soft edge where it meets skin. */
+  headReg(ch: Ch): Region {
+    const m = headMask(this.p);
+    return this.reg(ch, (x, y) => x >= 0 && y >= 0 && x < FRAME_W && y < FRAME_H && m[y * FRAME_W + x] === 1);
   }
   dot(x: number, y: number, hex: string, alpha = 255) {
     this.ops.push(() => this.c.set(x, y, hex, alpha));
@@ -242,16 +247,16 @@ const drawers: Record<string, Drawer> = {
   // ── headwear ──
   "headwear/head_cap_01.png": (f) => {
     const h = f.p.head;
-    fromHead(f.reg("primary"), f.p, (_x, y) => y <= h.y + 6);
+    fromHead(f.headReg("primary"), f.p, (_x, y) => y <= h.y + 6);
     const brim = f.reg("secondary");
-    if (f.dir === "down") brim.round(h.x - 1, h.y + 5, h.w + 2, 3, 1);
+    if (f.dir === "down") brim.round(h.x + 3, h.y + 6, h.w - 6, 2, 1); // brim stays inside the oval
     else if (f.dir === "left") brim.round(h.x - 4, h.y + 5, 9, 3, 1);
     else brim.rect(h.x + 6, h.y + 6, h.w - 12, 2);
   },
   "headwear/head_beanie_01.png": (f) => {
     const h = f.p.head;
-    fromHead(f.reg("primary"), f.p, (_x, y) => y <= h.y + 7);
-    f.reg("secondary").round(h.x - 1, h.y + 5, h.w + 2, 3, 1);
+    fromHead(f.headReg("primary"), f.p, (_x, y) => y <= h.y + 7);
+    fromHead(f.headReg("secondary"), f.p, (_x, y) => y >= h.y + 6 && y <= h.y + 7); // cuff follows the oval
   },
 
   // ── accessories ──
@@ -295,7 +300,7 @@ const drawers: Record<string, Drawer> = {
 function hairCap(f: Frame, sideLen: number) {
   const { p } = f;
   const h = p.head;
-  const r = f.reg("primary");
+  const r = f.headReg("primary");
   if (f.dir === "down") {
     fromHead(r, p, (x, y) => y <= h.y + 7 || (y <= h.y + 6 + sideLen && (x <= h.x + 3 || x >= h.x + h.w - 4)));
     r.rect(h.x + 4, h.y + 8, 6, 1).rect(h.x + 4, h.y + 9, 3, 1); // swept fringe

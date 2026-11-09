@@ -108,7 +108,12 @@ export class Region {
     return this;
   }
   /** Auto-shade and paint into canvas at offset. `light` controls highlight side. */
-  paint(c: Canvas, ox = 0, oy = 0, opts: { outline?: boolean; flat?: boolean; outlineColor?: string } = {}): void {
+  paint(
+    c: Canvas,
+    ox = 0,
+    oy = 0,
+    opts: { outline?: boolean; flat?: boolean; outlineColor?: string; inside?: (x: number, y: number) => boolean } = {},
+  ): void {
     const outline = opts.outline ?? true;
     for (let y = 0; y < this.h; y++)
       for (let x = 0; x < this.w; x++) {
@@ -119,7 +124,15 @@ export class Region {
         else if (edge && outline) shade = 0;
         else if (!this.has(x - 2, y) || !this.has(x, y - 2)) shade = 3;
         else if (!this.has(x + 2, y) || !this.has(x, y + 2)) shade = 1;
-        c.set(ox + x, oy + y, shade === 0 && opts.outlineColor ? opts.outlineColor : this.ramp[shade]!);
+        // Edges that only touch the silhouette's interior (e.g. hair meeting skin) get the ramp's dark shade,
+        // not the black outline — black is reserved for the outer silhouette.
+        let color = this.ramp[shade]!;
+        if (shade === 0 && opts.outlineColor) {
+          const outside = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].filter(([nx, ny]) => !this.has(nx!, ny!));
+          const soft = !!opts.inside && outside.every(([nx, ny]) => opts.inside!(nx!, ny!));
+          color = soft ? this.ramp[0]! : opts.outlineColor;
+        }
+        c.set(ox + x, oy + y, color);
       }
   }
 }
