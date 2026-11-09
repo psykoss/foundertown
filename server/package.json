@@ -1,0 +1,7 @@
+{
+  "name": "@ft/server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Multiplayer server (Colyseus). Not started yet — see docs/spec.md §Roadmap."
+}

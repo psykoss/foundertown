@@ -1,0 +1,86 @@
+[
+  {
+    "name": "desk",
+    "w": 64,
+    "h": 64,
+    "footprintW": 2,
+    "footprintH": 1
+  },
+  {
+    "name": "chair",
+    "w": 32,
+    "h": 48,
+    "footprintW": 1,
+    "footprintH": 1
+  },
+  {
+    "name": "plant",
+    "w": 32,
+    "h": 64,
+    "footprintW": 1,
+    "footprintH": 1
+  },
+  {
+    "name": "sofa",
+    "w": 96,
+    "h": 64,
+    "footprintW": 3,
+    "footprintH": 1
+  },
+  {
+    "name": "counter",
+    "w": 96,
+    "h": 64,
+    "footprintW": 3,
+    "footprintH": 1
+  },
+  {
+    "name": "table_round",
+    "w": 64,
+    "h": 64,
+    "footprintW": 2,
+    "footprintH": 1
+  },
+  {
+    "name": "bookshelf",
+    "w": 64,
+    "h": 96,
+    "footprintW": 2,
+    "footprintH": 1
+  },
+  {
+    "name": "whiteboard",
+    "w": 64,
+    "h": 64,
+    "footprintW": 2,
+    "footprintH": 1
+  },
+  {
+    "name": "tree",
+    "w": 64,
+    "h": 96,
+    "footprintW": 2,
+    "footprintH": 1
+  },
+  {
+    "name": "bench",
+    "w": 64,
+    "h": 48,
+    "footprintW": 2,
+    "footprintH": 1
+  },
+  {
+    "name": "lamp",
+    "w": 32,
+    "h": 96,
+    "footprintW": 1,
+    "footprintH": 1
+  },
+  {
+    "name": "pill_station",
+    "w": 32,
+    "h": 64,
+    "footprintW": 1,
+    "footprintH": 1
+  }
+]

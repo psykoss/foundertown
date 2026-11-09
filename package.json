@@ -1,0 +1,24 @@
+{
+  "name": "founder-town",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter client dev",
+    "build": "pnpm assets && pnpm --filter client build",
+    "assets": "pnpm assets:placeholders && pnpm assets:map && pnpm assets:validate",
+    "assets:placeholders": "tsx scripts/gen-placeholders.ts",
+    "assets:map": "tsx scripts/gen-map.ts",
+    "assets:validate": "tsx scripts/validate-assets.ts",
+    "assets:export": "bash scripts/export-aseprite.sh",
+    "test": "vitest run",
+    "typecheck": "tsc -p shared && tsc -p client --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

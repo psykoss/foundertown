@@ -1,0 +1,92 @@
+# Founder Town — Engine & Art Spec (v1)
+
+## 1. Scope of phase 1
+Engine, asset pipeline, environment and layered character builder. Single player + wandering NPCs (stand-ins for remote players). No server, no game systems yet.
+
+## 2. Architecture
+
+```
+client (browser)
+  React UI (HUD, character builder)  ──reads/writes──▶  store (single source of client state)
+  Phaser: BootScene → WorldScene                          ▲
+    InputController → intents ─────────▶ Character (logic) ┘
+    WorldView / CharacterView (render, read-only)
+shared (pure TS): spec, palette, grid, movement, pathfinding, avatar schema, map parsing
+server (later): Colyseus rooms reusing shared/ for authoritative movement
+scripts: placeholder generator, map generator, validator, Aseprite export, previews
+```
+
+Frame update order: input → logic → render → debug → HUD (4 Hz).
+
+## 3. World rules
+| Rule | Value |
+|---|---|
+| Tile | 32×32 |
+| View | top-down 3/4 — floors from above, walls/furniture show their front face |
+| Movement | grid, 4-dir, 180 ms/tile, keyboard (most recent key wins) or click-to-walk (BFS) |
+| Camera | integer zoom = floor(viewport height / 300), follow with rounding, clamped to map |
+| Depth | `depth = feet y` (characters) / `base y` (furniture); `ground*`/`walls` < 0; `above` = 2,000,000 |
+
+## 4. Character template
+- Frame 32×64, feet on row 61, origin bottom-center. Body proportions follow the reference (big head rows 29–44, body 44–61).
+- Sheet 192×384: 6 columns × 6 rows, rows `idle_down, idle_up, idle_left, walk_down, walk_up, walk_left`; idle uses columns 0–3, walk 0–5.
+- `right` is `left` mirrored at render time (v1). Asymmetric items will need a real `right` row later.
+- Motion model (`scripts/lib/pose.ts`): idle = head bob 1px on frames 2–3; walk = upper body drops 1px on contact frames 0/3, legs lift 2/1 px alternately (front/back) or stride ±1/2 px (side).
+
+### Layers (back → front, facing down/left)
+`shadow, back_accessory, hair_back, body, face, bottom, shoes, top, outerwear, hair_front, headwear, face_accessory, hand_item`
+Facing up: face goes behind the body; hair_back and back_accessory move in front. See `LAYER_ORDER`.
+
+### Slots → items
+`body, face, hair, top, outerwear*, bottom, shoes, headwear*, face_accessory*, back_accessory*` (* optional).
+One item can use several layers (long hair = `hair_back` + `hair_front`).
+
+### Color
+- Recolorable art is painted with key ramps (4 shades, dark → light):
+  skin `#404000 #808000 #c0c000 #ffff00`, primary `#400040 #800080 #c000c0 #ff00ff`, secondary `#004040 #008080 #00c0c0 #00ffff`.
+- At bake time keys are swapped for the chosen ramp (skin tones, hair colors, cloth colors in `shared/src/palette.ts`).
+- Fixed colors: black outline `#000000`, eyes, blush, base undershirt greys, glasses. Anything else fails validation.
+- The shadow layer is the only layer allowed to use alpha.
+
+### Avatar data (what gets saved / synced)
+```json
+{ "skin": "light", "slots": { "hair": { "id": "hair_short_01", "primary": "brown" }, "outerwear": null, ... } }
+```
+
+## 5. Map (Tiled)
+`client/public/assets/maps/town.tmj`, tilesets embedded.
+
+| Layer | Type | Purpose |
+|---|---|---|
+| ground | tiles | floors, grass, paths, water |
+| ground_detail | tiles | rugs, decals |
+| walls | tiles | wall caps + 3/4 wall faces, hedges |
+| collision | tiles (hidden) | any tile = blocked |
+| objects | tile objects | furniture from the `furniture` image-collection tileset; y-sorted with characters; tile props `footprintW/H` block tiles automatically |
+| above | tiles | always over characters (roof edges, tree tops) |
+| markers | objects | `spawn` points, `zone` rectangles (`kind` prop: room, pills…) |
+
+Buildings: the back wall shows its face (2 tiles), side and front walls show only their cap; doors are gaps in the front wall.
+
+## 6. Asset pipeline
+```
+art/characters/reference/base_body.png   reference body (source of all body frames)
+art/characters/items.json                item registry (hand-edited)
+art/palette/master.gpl                   master palette for Aseprite (generated)
+scripts/gen-placeholders.ts              template-correct placeholder art (characters, terrain, furniture)
+scripts/gen-map.ts                       starter map (only if missing)
+scripts/validate-assets.ts               size/grid/palette/map checks — CI gate
+scripts/export-aseprite.sh               real art: .aseprite (tags idle_down…) → sheets
+scripts/preview-avatar.ts                composed avatars → docs/previews/
+```
+Replacing art = drop a PNG with the same path and template → no code changes.
+
+## 7. Roadmap
+1. ✅ Repo, tooling, pixel-perfect render
+2. ✅ Placeholder generator + validator
+3. ✅ Tilemap, camera, y-sort, debug overlay
+4. ✅ Character logic + grid movement + animation
+5. ✅ Layer compositor + palette swap
+6. ✅ Character builder
+7. ⏳ Real art pass (Aseprite): body anims, clothing, tilesets → `assets:export`
+8. Next phases: Colyseus server (shared movement), proximity + chat, rooms/portals, founder pills, persistence
