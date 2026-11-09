@@ -35,13 +35,13 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 
 ## Characters
 - Base body = `art/characters/reference/base_body.png` (down / up / left, 96×64) → idle frames.
-- Walk = `art/characters/reference/base_walk.png` + `.json` (4 frames × down/up/left, imported from the reference recording with `scripts/tools/import_walk_reference.py`). Heads are the base head riding the whole-body bob in the JSON; legs/arms are the reference poses.
-- Clothing is cut per frame from that frame's body silhouette (`source()` / `bodyMask()`), so it follows every pose. **All clothing drawers use `pose()` + the masks so they move with the body.**
+- Walk = `art/characters/reference/base_walk.png` + `.json` (4 frames × down/up/left, imported from the reference recording with `scripts/tools/import_walk_reference.py <video>`; cycles anchored on the planted foot). Heads are the base head riding the whole-body bob in the JSON; legs/arms are the reference poses.
+- Clothing is a **recolor of the base body's pixel classes** per frame (`classes()` in the generator): TANK → shirt, SHORTS + LEG → pants, FOOT (lowest 3 leg px) → shoes, ARM → sleeves, HAND never covered. Each pixel keeps its reference shade, so clothing has the reference outline, contour and shading, and hands crossing the hips stay visible. Bulky extras (hood, skirt, backpack, hats) are drawn shapes.
 - Items: `art/characters/items.json` (source) → copied to `client/public/assets/characters/items.json`. An item = slot + parts (layer + sheet) + channels (+ optional `unlock`).
 - Layer draw order per direction: `LAYER_ORDER` in `shared/src/avatar.ts` (facing up, back layers move in front).
 - The base body is split into `body` (torso/limbs) and `head` layers; `head` is drawn above top/outerwear so clothing never covers the chin. The chin/jaw extends below the head rows in the middle columns (`isChin` in `scripts/lib/pose.ts`: row 45 cols 10–21, row 46 cols 11–20) and is part of the head layer; shirts put the chin's cast shadow on row 47.
 - The head is an oval (reference silhouette). Hair and headwear are cut from that silhouette (`fromHead`) and must not grow outside it — otherwise the head reads as round. Use `f.headReg()` for them — it copies the reference head's shade per pixel (`headShades`), so hair/hats carry exactly the reference shading; black outline only on the outer silhouette, the ramp's dark shade where hair meets skin (no black line across the forehead).
-- Shading = the reference's cel shading (`volume: true` in `Region.paint`): one flat lit shade, a curved terminator (mid shade starts ~55% down at the sides, lower toward the center), darkest shade only in bottom corners; legs one shade darker (`dim`). Clothing is cut from the animated body silhouette (`fromBody`), sleeves are separate outlined shapes, edges meeting skin are soft. Details are limited to the head's cast shadow and arm/torso separation — no strands or noise.
+- Shading comes from the reference pixels themselves: clothing copies the body pixel's shade, hair/hats copy the head's (`headShades`). `volume: true` cel shading is only for drawn shapes (hood, skirt, backpack, cap brim).
 - Compositor bakes each avatar once into a single texture (`client/src/game/avatar/compositor.ts`), cached by appearance.
 
 ## Workflow

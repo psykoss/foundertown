@@ -8,9 +8,10 @@ How it works
 - the recording shows the 32x64 character at exactly 8x; grid origin (-44, -198) px
 - frames are deduplicated (each pose is held ~8 video frames), then sampled at cell centers,
   background removed by flood fill from the frame border, colors snapped to the reference palette
-- cycles (4 frames each) were identified by pairwise frame comparison:
-    down: segments 37,38,39,40   up: 28,29,30,31 (head top cut by the recording → shifted +5 rows)
-    left: 16,17,21,18
+- cycles (4 frames each) were identified by pairwise frame comparison of the 2026-11-09 21:06:52 recording:
+    down: segments 48,49,50,51   up: 39,40,41,42   left: 5,6,7,8   (pass, stride, pass, stride)
+- the camera follows the walker, so absolute position is not reliable: each cycle is anchored so its
+  lowest (planted) foot sits on row 61; the remaining up/down offsets between frames are the real bob
 - the head is static art: it is replaced by the base head (base_body.png) at the detected bob offset,
   so heads/hair/hats stay identical to idle and only move with the whole-body bob.
 Requires: ffmpeg, Pillow.
@@ -20,8 +21,8 @@ from PIL import Image, ImageChops
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OX, OY, S = -44, -198, 8
-CYCLES = {"down": [37, 38, 39, 40], "up": [28, 29, 30, 31], "left": [16, 17, 21, 18]}
-ROW_SHIFT = {"down": 0, "up": 5, "left": 0}
+CYCLES = {"down": [48, 49, 50, 51], "up": [39, 40, 41, 42], "left": [5, 6, 7, 8]}
+FEET_ROW = 61
 DIR_COL = {"down": 0, "up": 1, "left": 2}  # column of each direction in base_body.png
 CANON = ['#000000', '#75412b', '#ab633b', '#d8885c', '#f9bf95', '#f4845c', '#222034', '#663931',
          '#fffefd', '#ece9f0', '#ffffff', '#c8c2d1', '#9193a6']
@@ -88,10 +89,13 @@ def main(video):
         head = {(x, y): base.getpixel((bx + x, y)) for y in range(64) for x in range(32)
                 if base.getpixel((bx + x, y))[3] and in_head(d, x, y, 0)}
         motion[d] = []
-        for fi, k in enumerate(cyc):
+        grids = []
+        for k in cyc:
             s, e = segs[k]
-            g = sample(Image.open(frames[(s + e) // 2]).convert("RGB"), open_top=(d == "up"))
-            g = {(x, y + ROW_SHIFT[d]): c for (x, y), c in g.items()}
+            grids.append(sample(Image.open(frames[(s + e) // 2]).convert("RGB"), open_top=True))
+        shift = FEET_ROW - max(y for g in grids for (_, y) in g)
+        for fi, g in enumerate(grids):
+            g = {(x, y + shift): c for (x, y), c in g.items()}
             # detect bob: best head alignment
             best = None
             for dy in (-2, -1, 0, 1):
@@ -104,6 +108,8 @@ def main(video):
             motion[d].append({"dx": dx, "dy": dy})
             ox = fi * 32; oy = DIR_COL[d] * 64
             for (x, y), c in g.items():
+                if c == '#fffefd':
+                    c = '#ffffff'  # body whites are undershirt, not eye white
                 if 0 <= x < 32 and 0 <= y < 64 and not in_head(d, x - dx, y, dy):
                     strip.putpixel((ox + x, oy + y), rgb(c) + (255,))
             for (x, y), p in head.items():

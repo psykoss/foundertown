@@ -92,6 +92,18 @@ class Frame {
   detail(r: Region, d: number, when: (x: number, y: number) => boolean) {
     for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (r.has(x, y) && when(x, y)) this.shift(x, y, d);
   }
+  /** Paint the pixels of the given classes in a key ramp, keeping each pixel's reference shade. */
+  recolor(ch: Ch, when: (cls: number, x: number, y: number) => boolean, dim = 0) {
+    const { cls, shade } = classes(this.p);
+    this.ops.push(() => {
+      for (let y = 0; y < FRAME_H; y++)
+        for (let x = 0; x < FRAME_W; x++) {
+          const i = y * FRAME_W + x;
+          if (shade[i]! < 0 || !when(cls[i]!, x, y)) continue;
+          this.c.set(x, y, KEY_RAMPS[ch][Math.max(0, shade[i]! - dim)]!);
+        }
+    });
+  }
   dot(x: number, y: number, hex: string, alpha = 255) {
     this.ops.push(() => this.c.set(x, y, hex, alpha));
   }
@@ -245,6 +257,78 @@ function headShades(p: Pose): Int8Array {
   return out;
 }
 
+/**
+ * Pixel classes of a frame's base body — clothing is a recolor of these, so it keeps the reference
+ * outline, contour and shading exactly, and hands are never covered.
+ *   TANK  base undershirt pixels       SHORTS base shorts pixels
+ *   ARM   skin connected to the shoulders (arms + hands, incl. hands crossing the hips)
+ *   LEG   skin of the legs              FOOT the lowest 3 leg pixels per column
+ */
+const C = { NONE: 0, OUTLINE: 1, TANK: 2, SHORTS: 3, ARM: 4, HAND: 5, LEG: 6, FOOT: 7 } as const;
+const BASE_GREYS = [FIXED_COLORS.base0, FIXED_COLORS.base1, FIXED_COLORS.base2, FIXED_COLORS.base3] as string[];
+const HIP_LINE: Record<SheetDir, number> = { down: 52, up: 52, left: 54 };
+interface Classes { cls: Uint8Array; shade: Int8Array }
+const classCache = new Map<string, Classes>();
+function classes(p: Pose): Classes {
+  const key = `${p.dir}:${p.anim}:${p.f}`;
+  const hit = classCache.get(key);
+  if (hit) return hit;
+  const src = source(p, "body");
+  const N = FRAME_W * FRAME_H;
+  const cls = new Uint8Array(N);
+  const shade = new Int8Array(N).fill(-1);
+  const skin = new Uint8Array(N);
+  const hip = HIP_LINE[p.dir] + p.m.bodyDy;
+  for (let y = 0; y < FRAME_H; y++)
+    for (let x = 0; x < FRAME_W; x++) {
+      const h = hexAt(src, x, y);
+      if (!h) continue;
+      const i = y * FRAME_W + x;
+      const k = (KEY_RAMPS.skin as readonly string[]).indexOf(h);
+      // on the body, the near-white eye color is a sampled undershirt highlight → treat as base3
+      const g = h === FIXED_COLORS.eyeWhite ? 3 : BASE_GREYS.indexOf(h);
+      if (h === BLACK) cls[i] = C.OUTLINE;
+      // undershirt white highlight (base3) reads as a stain on colored cloth → fold it into the main tone
+      else if (g >= 0) { cls[i] = y < hip ? C.TANK : C.SHORTS; shade[i] = Math.min(g, 2); }
+      // skin's main fill is its lightest shade (3) while cloth's main fill is shade 2 → offset skin by one
+      else if (k >= 0) { skin[i] = 1; shade[i] = Math.max(0, k - 1); }
+    }
+  // skin components: touching rows above the hips → arm (shoulders, arms, hands); else → leg
+  const seen = new Uint8Array(N);
+  for (let i0 = 0; i0 < N; i0++) {
+    if (!skin[i0] || seen[i0]) continue;
+    const comp: number[] = [];
+    const st = [i0];
+    seen[i0] = 1;
+    while (st.length) {
+      const i = st.pop()!;
+      comp.push(i);
+      const x = i % FRAME_W, y = (i / FRAME_W) | 0;
+      for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]] as const) {
+        if (nx < 0 || ny < 0 || nx >= FRAME_W || ny >= FRAME_H) continue;
+        const j = ny * FRAME_W + nx;
+        if (skin[j] && !seen[j]) { seen[j] = 1; st.push(j); }
+      }
+    }
+    const minY = Math.min(...comp.map((i) => (i / FRAME_W) | 0));
+    const maxY = Math.max(...comp.map((i) => (i / FRAME_W) | 0));
+    const isArm = minY < hip - 2;
+    for (const i of comp) cls[i] = isArm ? (((i / FRAME_W) | 0) >= maxY - 2 ? C.HAND : C.ARM) : C.LEG;
+  }
+  // feet: lowest 3 leg pixels of each column
+  for (let x = 0; x < FRAME_W; x++) {
+    let n = 0;
+    for (let y = FRAME_H - 1; y >= 0 && n < 3; y--) {
+      const i = y * FRAME_W + x;
+      if (cls[i] === C.LEG) { cls[i] = C.FOOT; n++; }
+      else if (n > 0 && cls[i] !== C.OUTLINE) break;
+    }
+  }
+  const out = { cls, shade };
+  classCache.set(key, out);
+  return out;
+}
+
 /** Body silhouette (torso, arms, legs — animated) for a pose. */
 const bodyMaskCache = new Map<string, Uint8Array>();
 function bodyMask(p: Pose): Uint8Array {
@@ -321,7 +405,7 @@ const drawers: Record<string, Drawer> = {
   "outerwear/outer_hoodie_01.png": (f) => {
     const { p } = f;
     const t = p.torso;
-    jacket(f, 1);
+    jacket(f);
     if (f.dir === "down") {
       f.reg("primary").round(p.head.x + 4, p.head.y + p.head.h - 3, p.head.w - 8, 4, 1);
       f.dot(t.x + 5, t.y + 3, KEY_RAMPS.secondary[3]);
@@ -336,7 +420,7 @@ const drawers: Record<string, Drawer> = {
   },
   "outerwear/outer_blazer_01.png": (f) => {
     const t = f.p.torso;
-    jacket(f, 0);
+    jacket(f);
     if (f.dir === "down") {
       const v = f.reg("secondary");
       for (let i = 0; i < 6; i++) v.rect(t.x + 5 + Math.floor(i / 2), t.y + 1 + i, 4 - 2 * Math.floor(i / 2), 1);
@@ -450,85 +534,37 @@ function hairCap(f: Frame, sideLen: number) {
   }
 }
 
-// Clothing is cut from the animated body silhouette, so it has the same rounded contour as the body.
-// Rows/cols below are measured from the reference (front/back: torso cols 11–20, arms outside;
-// shoulders row 45, hands rows 52–54, legs 55–61; side: torso rows 46–56, legs 57–61).
+// Clothing = recolor of the base body's pixel classes (see `classes()`): it keeps the reference outline,
+// contour and shading, sleeves follow the arms, pants follow the legs, hands stay visible over hips.
 
 const isFrontBack = (f: Frame) => f.dir !== "left";
-const torsoCol = (x: number) => x >= 11 && x <= 20;
-
-/** Cast shadow of the head + arm/torso separation, as in the reference. */
-function torsoDetail(f: Frame, r: Region) {
-  const inner = (x: number, y: number) => r.has(x - 1, y) && r.has(x + 1, y) && r.has(x, y - 1) && r.has(x, y + 1);
-  const y0 = 45 + f.p.m.bodyDy;
-  if (f.dir === "up") {
-    f.detail(r, -2, (x, y) => inner(x, y) && y === y0 + 2 && Math.abs(x + 0.5 - 16) <= 4); // under the nape
-  } else if (f.dir === "down") {
-    f.detail(r, -1, (x, y) => inner(x, y) && y === y0 + 2 && Math.abs(x + 0.5 - 16) <= 4); // chin cast shadow
-  } else {
-    f.detail(r, -1, (x, y) => inner(x, y) && y <= y0 + 1 && x <= 15);
-  }
-  if (isFrontBack(f)) f.detail(r, -1, (x, y) => inner(x, y) && y >= y0 + 2 && (x === 11 || x === 20));
-}
 
 function shirt(f: Frame, sleeveRows: number, collar: boolean) {
-  const { p } = f;
-  const y0 = 45 + p.m.bodyDy;
-  const r = f.bodyReg("primary");
-  if (isFrontBack(f)) fromBody(r, p, (x, y) => y >= y0 && y <= y0 + 8 && (torsoCol(x) || y <= y0 + 1));
-  else fromBody(r, p, (_x, y) => y >= y0 + 1 && y <= y0 + 8 + Math.min(1, sleeveRows - 4));
-  if (f.dir === "down") r.px(15, y0, false).px(16, y0, false); // neckline
-  torsoDetail(f, r);
-  if (isFrontBack(f)) armWear(f, sleeveRows, 0);
-  if (collar && f.dir === "down") f.bodyReg("secondary").rect(13, y0, 6, 1);
-}
-
-function jacket(f: Frame, grow: number) {
-  const { p } = f;
-  const y0 = 45 + p.m.bodyDy;
-  const r = f.bodyReg("primary");
-  if (isFrontBack(f)) fromBody(r, p, (x, y) => y >= y0 && y <= y0 + 9 && (torsoCol(x) || y <= y0 + 1), grow);
-  else fromBody(r, p, (_x, y) => y >= y0 + 1 && y <= y0 + 9, grow);
-  torsoDetail(f, r);
-  if (isFrontBack(f)) armWear(f, 7, grow);
-}
-
-/** Sleeves as their own rounded shapes (outlined against the torso, like the reference arms). */
-function armWear(f: Frame, rows: number, grow: number) {
   const y0 = 45 + f.p.m.bodyDy;
-  for (const side of [(x: number) => x <= 10, (x: number) => x >= 21]) {
-    const r = f.bodyReg("primary");
-    fromBody(r, f.p, (x, y) => side(x) && y >= y0 + 1 && y < y0 + rows, grow);
-  }
+  f.recolor("primary", (c, _x, y) => c === C.TANK || (c === C.ARM && y < y0 + sleeveRows));
+  if (collar && f.dir === "down") f.recolor("secondary", (c, x, y) => c === C.TANK && y <= y0 + 2 && x >= 13 && x <= 18);
+}
+
+function jacket(f: Frame) {
+  f.recolor("primary", (c) => c === C.TANK || c === C.ARM);
 }
 
 function legsWear(f: Frame, len: number) {
-  const { p } = f;
-  const hipTop = (isFrontBack(f) ? 52 : 53) + p.m.bodyDy;
-  const legTop = isFrontBack(f) ? 55 : 57;
-  const bottom = Math.min(59, legTop + len);
-  const hipCols = (x: number) => (isFrontBack(f) ? x >= 10 && x <= 21 : true);
-  // hips: in light; legs: one shade down (they sit in the body's shadow, like the reference legs)
-  const hip = f.bodyReg("primary");
-  fromBody(hip, p, (x, y) => y >= hipTop && y < legTop && hipCols(x));
-  const legs = f.bodyReg("primary", 1);
-  fromBody(legs, p, (x, y) => y >= legTop - 1 && y <= bottom && hipCols(x));
-  if (isFrontBack(f)) f.detail(hip, -1, (x, y) => (x === 15 || x === 16) && y >= hipTop + 2);
+  const legTop = (isFrontBack(f) ? 55 : 57) + f.p.m.bodyDy;
+  f.recolor("primary", (c, _x, y) => c === C.SHORTS || (c === C.LEG && y <= legTop + len));
 }
 
 function footwear(f: Frame, shaft: number) {
-  const { p } = f;
-  const m = bodyMask(p);
-  const r = f.bodyReg("primary");
-  // per column: the lowest 3 (+shaft) body pixels are the foot → follows lifted/striding legs
-  for (let x = 0; x < FRAME_W; x++) {
-    let yb = -1;
-    for (let y = FRAME_H - 1; y >= 55; y--) if (m[y * FRAME_W + x]) { yb = y; break; }
-    if (yb < 0) continue;
-    for (let y = yb; y >= yb - 2 - shaft && y >= 55; y--) if (m[y * FRAME_W + x]) r.px(x, y); // 3-row foot like the reference
-  }
-  const sole = f.bodyReg("secondary");
-  for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (r.has(x, y) && !r.has(x, y + 1)) sole.px(x, y);
+  const { cls } = classes(f.p);
+  const isFoot = (x: number, y: number) => y >= 0 && y < FRAME_H && cls[y * FRAME_W + x] === C.FOOT;
+  // boots: also the leg pixels just above the foot
+  const inShaft = (x: number, y: number) => {
+    for (let d = 1; d <= shaft; d++) if (isFoot(x, y + d)) return true;
+    return false;
+  };
+  f.recolor("primary", (c, x, y) => c === C.FOOT || (shaft > 0 && c === C.LEG && inShaft(x, y)));
+  // sole: bottom foot pixel of each column
+  f.recolor("secondary", (c, x, y) => c === C.FOOT && !isFoot(x, y + 1));
 }
 
 function buildSheet(drawer: Drawer): Canvas {
