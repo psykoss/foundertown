@@ -149,7 +149,7 @@ function headMask(p: Pose): Uint8Array {
 }
 
 /** Fill a region with (head mask ∩ predicate), grown by `grow` px for volume. */
-function fromHead(r: Region, p: Pose, keep: (x: number, y: number) => boolean, growPx = 1): Region {
+function fromHead(r: Region, p: Pose, keep: (x: number, y: number) => boolean, growPx = 0): Region {
   const m = headMask(p);
   const base: [number, number][] = [];
   for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (m[y * FRAME_W + x] && keep(x, y)) base.push([x, y]);
@@ -173,7 +173,7 @@ const drawers: Record<string, Drawer> = {
   "face/face_01.png": (f) => animate(BASE[f.dir].face, f.p, f.c),
 
   // ── hair ──
-  "hair/hair_short_01.png": (f) => hairCap(f, 5),
+  "hair/hair_short_01.png": (f) => hairCap(f, 2),
   "hair/hair_long_01_front.png": (f) => hairCap(f, 11),
   "hair/hair_long_01_back.png": (f) => {
     const h = f.p.head;
@@ -250,7 +250,7 @@ const drawers: Record<string, Drawer> = {
   },
   "headwear/head_beanie_01.png": (f) => {
     const h = f.p.head;
-    fromHead(f.reg("primary"), f.p, (_x, y) => y <= h.y + 6, 2);
+    fromHead(f.reg("primary"), f.p, (_x, y) => y <= h.y + 7);
     f.reg("secondary").round(h.x - 1, h.y + 5, h.w + 2, 3, 1);
   },
 
@@ -297,10 +297,12 @@ function hairCap(f: Frame, sideLen: number) {
   const h = p.head;
   const r = f.reg("primary");
   if (f.dir === "down") {
-    fromHead(r, p, (x, y) => y <= h.y + 7 || (y <= h.y + 6 + sideLen && (x <= h.x + 2 || x >= h.x + h.w - 3)));
+    fromHead(r, p, (x, y) => y <= h.y + 7 || (y <= h.y + 6 + sideLen && (x <= h.x + 3 || x >= h.x + h.w - 4)));
     r.rect(h.x + 4, h.y + 8, 6, 1).rect(h.x + 4, h.y + 9, 3, 1); // swept fringe
   } else if (f.dir === "up") {
-    fromHead(r, p, (_x, y) => y <= h.y + 11 + Math.max(0, sideLen - 5));
+    // back of the head: cover down to the nape, leave the ears as skin
+    const nape = h.y + 13 + Math.max(0, sideLen - 5);
+    fromHead(r, p, (x, y) => y <= h.y + 8 || (y <= nape && x >= h.x + 2 && x <= h.x + h.w - 3));
   } else {
     fromHead(r, p, (x, y) => y <= h.y + 7 || (x >= h.x + 9 && y <= h.y + 6 + Math.max(6, sideLen)));
     r.rect(h.x + 1, h.y + 8, 4, 1); // fringe tip
