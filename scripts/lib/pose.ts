@@ -28,6 +28,16 @@ export const MOTION = {
 export const LEG_TOP: Record<SheetDir, number> = { down: 55, up: 55, left: 57 };
 /** Rows at or above this belong to the head (idle bob). */
 export const HEAD_BOTTOM: Record<SheetDir, number> = { down: 44, up: 44, left: 45 };
+/**
+ * Chin/jaw (front) and nape (back) extend below HEAD_BOTTOM in the middle columns:
+ * row 45 cols 10–21, row 46 cols 11–20 (the dark jaw pixels frame the chin). They belong to the head
+ * layer so clothing never covers the chin.
+ */
+export function isChin(dir: SheetDir, x: number, y: number): boolean {
+  if (dir === "left") return false;
+  return (y === 45 && x >= 10 && x <= 21) || (y === 46 && x >= 11 && x <= 20);
+}
+
 /** Front/back: columns < this are the screen-left leg. */
 export const LEG_SPLIT_X = 16;
 

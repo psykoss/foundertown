@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Canvas, Region, rng, type Ramp4 } from "./lib/pixel.js";
-import { pose, HEAD_BOTTOM, LEG_TOP, LEG_SPLIT_X, type Pose, type R } from "./lib/pose.js";
+import { pose, isChin, HEAD_BOTTOM, LEG_TOP, LEG_SPLIT_X, type Pose, type R } from "./lib/pose.js";
 import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, SHEET_H, SHEET_W, TILE, sheetRow,
   type AnimName, type SheetDir,
@@ -120,7 +120,7 @@ function loadBase(): Record<SheetDir, { body: Canvas; head: Canvas; face: Canvas
         const h = hexAt(strip, i * FRAME_W + x, y);
         if (!h) continue;
         const skin = REF_SKIN.indexOf(h);
-        const isHead = y <= HEAD_BOTTOM[dir];
+        const isHead = y <= HEAD_BOTTOM[dir] || isChin(dir, x, y);
         const target = isHead ? head : body;
         if (isHead && FACE_COLORS.has(h)) {
           face.set(x, y, h);
@@ -396,9 +396,9 @@ function torsoDetail(f: Frame, r: Region) {
   const inner = (x: number, y: number) => r.has(x - 1, y) && r.has(x + 1, y) && r.has(x, y - 1) && r.has(x, y + 1);
   const y0 = 45 + f.p.m.bodyDy;
   if (f.dir === "up") {
-    f.detail(r, -2, (x, y) => inner(x, y) && y <= y0 + 1 && Math.abs(x + 0.5 - 16) <= 4);
+    f.detail(r, -2, (x, y) => inner(x, y) && y === y0 + 2 && Math.abs(x + 0.5 - 16) <= 4); // under the nape
   } else if (f.dir === "down") {
-    f.detail(r, -1, (x, y) => inner(x, y) && y === y0 && Math.abs(x + 0.5 - 16) <= 5);
+    f.detail(r, -1, (x, y) => inner(x, y) && y === y0 + 2 && Math.abs(x + 0.5 - 16) <= 4); // chin cast shadow
   } else {
     f.detail(r, -1, (x, y) => inner(x, y) && y <= y0 + 1 && x <= 15);
   }
