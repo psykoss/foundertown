@@ -31,7 +31,7 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 - Grid movement, one tile per `STEP_MS` (180 ms). 4 directions; `right` = `left` mirrored.
 - Sheet template: 4 columns × 6 rows (128×384). Rows anim-major: idle_down, idle_up, idle_left, walk_down, walk_up, walk_left. Idle 4 frames, walk 4 (8 fps).
 - Character art: pure black outline, key ramps for recolorable parts (skin = yellow keys, primary = magenta keys, secondary = cyan keys), fixed colors from `FIXED_COLORS`.
-- Palette: retro dim pastel — anchors cream `#e8d8c9`, slate `#4b607f`, orange `#f3701e`, charcoal `#1f1d1c` (`RETRO` in `shared/src/palette.ts`). All env/cloth/UI colors come from these ramps; no saturated or off-palette colors (the validator enforces it for art).
+- Palette: extracted from the reference office screenshots (`ENV_RAMPS`/`CLOTH_RAMPS` in `shared/src/palette.ts`): cream brick floors, lavender carpets, grey-green walls, mint gardens, blue fabric, tan wood, amber/coral accents; UI navy + purple. Environment art has **no hard outlines** — flat fills, joints/patterns one shade off, objects get a soft edge in their own darkest shade. Characters keep their black outline.
 - Depth = feet / base y for characters and furniture. Ground layers < 0, `above` layer 2,000,000, debug 3,000,000.
 
 ## Characters

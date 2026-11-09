@@ -70,9 +70,9 @@ function scale(c: Canvas, k: number, bg = "#3f7a3e"): Canvas {
 
 const looks: Record<string, Avatar> = {
   default: DEFAULT_AVATAR,
-  hoodie: { skin: "brown", slots: { ...DEFAULT_AVATAR.slots, hair: { id: "hair_long_01", primary: "black" }, outerwear: { id: "outer_hoodie_01", primary: "mustard", secondary: "cream" }, bottom: { id: "bottom_skirt_01", primary: "charcoal" }, shoes: { id: "shoes_boots_01", primary: "charcoal", secondary: "beige" }, back_accessory: { id: "backpack_01", primary: "sage", secondary: "teal" } } },
-  founder: { skin: "porcelain", slots: { ...DEFAULT_AVATAR.slots, hair: { id: "hair_bun_01", primary: "blonde" }, top: { id: "top_longsleeve_01", primary: "cream", secondary: "slate" }, outerwear: { id: "outer_blazer_01", primary: "slate", secondary: "cream" }, face_accessory: { id: "glasses_01" }, bottom: { id: "bottom_pants_01", primary: "charcoal" } } },
-  cap: { skin: "deep", slots: { ...DEFAULT_AVATAR.slots, headwear: { id: "head_cap_01", primary: "orange", secondary: "charcoal" }, bottom: { id: "bottom_shorts_01", primary: "beige" }, top: { id: "top_tee_01", primary: "rust" } } },
+  hoodie: { skin: "brown", slots: { ...DEFAULT_AVATAR.slots, hair: { id: "hair_long_01", primary: "black" }, outerwear: { id: "outer_hoodie_01", primary: "mustard", secondary: "white" }, bottom: { id: "bottom_skirt_01", primary: "charcoal" }, shoes: { id: "shoes_boots_01", primary: "charcoal", secondary: "beige" }, back_accessory: { id: "backpack_01", primary: "green", secondary: "teal" } } },
+  founder: { skin: "porcelain", slots: { ...DEFAULT_AVATAR.slots, hair: { id: "hair_bun_01", primary: "blonde" }, top: { id: "top_longsleeve_01", primary: "white", secondary: "navy" }, outerwear: { id: "outer_blazer_01", primary: "lavender", secondary: "white" }, face_accessory: { id: "glasses_01" }, bottom: { id: "bottom_pants_01", primary: "charcoal" } } },
+  cap: { skin: "deep", slots: { ...DEFAULT_AVATAR.slots, headwear: { id: "head_cap_01", primary: "coral", secondary: "navy" }, bottom: { id: "bottom_shorts_01", primary: "beige" }, top: { id: "top_tee_01", primary: "purple" } } },
 };
 
 fs.mkdirSync(path.join(ROOT, "docs/previews"), { recursive: true });

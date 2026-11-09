@@ -25,8 +25,8 @@ export class CharacterView {
       .text(0, 0, character.name, {
         fontFamily: "ui-monospace, Menlo, monospace",
         fontSize: "8px",
-        color: "#e8d8c9",
-        backgroundColor: "#1f1d1ccc",
+        color: "#ffffff",
+        backgroundColor: "#5c4ebe",
         padding: { x: 3, y: 1 },
         resolution: 4,
       })

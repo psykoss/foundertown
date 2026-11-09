@@ -105,6 +105,7 @@ function building(x: number, y: number, w: number, h: number, floor: number, doo
 }
 
 building(2, 2, 18, 12, TERRAIN.wood, 10, [3, 6, 11, 14]); // Office
+fillRect(ground, 3, 6, 15, 6, TERRAIN.carpet); // desk area carpet (reference office)
 building(28, 2, 18, 12, TERRAIN.tileFloor, 36, [3, 7, 10, 14]); // Café
 fillRect(ground, 31, 9, 8, 3, TERRAIN.carpet);
 

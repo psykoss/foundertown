@@ -73,8 +73,8 @@ describe("palette swap", () => {
   it("replaces key ramp pixels only", () => {
     const [r, g, b] = hexToRgb(KEY_RAMPS.primary[2]);
     const px = new Uint8ClampedArray([r, g, b, 255, 10, 20, 30, 255]);
-    swapPixels(px, buildSwapTable({ primary: CLOTH_RAMPS.orange! }));
-    expect([...px.slice(0, 3)]).toEqual(hexToRgb(CLOTH_RAMPS.orange![2]));
+    swapPixels(px, buildSwapTable({ primary: CLOTH_RAMPS.coral! }));
+    expect([...px.slice(0, 3)]).toEqual(hexToRgb(CLOTH_RAMPS.coral![2]));
     expect([...px.slice(4, 7)]).toEqual([10, 20, 30]);
   });
 });

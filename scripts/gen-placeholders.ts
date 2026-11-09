@@ -626,116 +626,102 @@ const E = ENV_RAMPS as Record<string, Ramp4>;
 
 
 function terrainTileset(): Canvas {
+  // Reference style: flat pastel fills, joints/patterns 1 shade off the fill, no outlines.
   const c = new Canvas(8 * TILE, 2 * TILE);
   const at = (id: number) => ({ ox: (id % 8) * TILE, oy: Math.floor(id / 8) * TILE });
-  const noise = (id: number, ramp: Ramp4, seed: number, density: number, base = 2) => {
+
+  /** Running-bond bricks: fill + 1px joints in a slightly darker tone. */
+  const bricks = (id: number, fill: string, joint: string, bw: number, bh: number) => {
     const { ox, oy } = at(id);
-    const rand = rng(seed);
-    c.fill(ox, oy, TILE, TILE, ramp[base]!);
-    for (let i = 0; i < TILE * TILE * density; i++) {
-      const x = Math.floor(rand() * TILE);
-      const y = Math.floor(rand() * TILE);
-      c.set(ox + x, oy + y, rand() < 0.5 ? ramp[base - 1]! : ramp[Math.min(3, base + 1)]!);
+    c.fill(ox, oy, TILE, TILE, fill);
+    for (let y = 0; y < TILE; y += bh) {
+      c.fill(ox, oy + y + bh - 1, TILE, 1, joint);
+      const off = (y / bh) % 2 ? bw / 2 : 0;
+      for (let x = off; x < TILE + bw; x += bw) if (x < TILE) c.fill(ox + x, oy + y, 1, bh - 1, joint);
     }
-    return { ox, oy, rand };
+    return { ox, oy };
   };
 
-  // grass variants
-  noise(TERRAIN.grass0, E.grass!, 1, 0.025);
-  const g1 = noise(TERRAIN.grass1, E.grass!, 2, 0.025);
-  for (let i = 0; i < 5; i++) {
-    const x = Math.floor(g1.rand() * 28) + 2;
-    const y = Math.floor(g1.rand() * 26) + 4;
-    c.set(g1.ox + x, g1.oy + y, E.grass![3]!);
-    c.set(g1.ox + x, g1.oy + y - 1, E.grass![3]!);
-    c.set(g1.ox + x + 1, g1.oy + y, E.grass![1]!);
-  }
-  const g2 = noise(TERRAIN.grass2, E.grass!, 3, 0.025);
-  for (let i = 0; i < 4; i++) {
-    const x = Math.floor(g2.rand() * 26) + 3;
-    const y = Math.floor(g2.rand() * 26) + 3;
-    const col = i % 2 ? E.paper![3]! : E.accent![3]!;
-    c.set(g2.ox + x, g2.oy + y, col);
-    c.set(g2.ox + x + 1, g2.oy + y, col);
-    c.set(g2.ox + x, g2.oy + y + 1, col);
-    c.set(g2.ox + x + 1, g2.oy + y + 1, E.grass![0]!);
-  }
+  // grass: flat mint with a few soft lighter/darker specks (like the reference garden floor)
+  const grass = (id: number, seed: number, extra: (ox: number, oy: number, rand: () => number) => void) => {
+    const { ox, oy } = at(id);
+    const rand = rng(seed);
+    const g = E.grass!;
+    c.fill(ox, oy, TILE, TILE, g[2]!);
+    for (let i = 0; i < 18; i++) c.set(ox + Math.floor(rand() * TILE), oy + Math.floor(rand() * TILE), g[3]!);
+    for (let i = 0; i < 6; i++) c.set(ox + Math.floor(rand() * TILE), oy + Math.floor(rand() * TILE), g[1]!);
+    extra(ox, oy, rand);
+  };
+  grass(TERRAIN.grass0, 1, () => {});
+  grass(TERRAIN.grass1, 2, (ox, oy, rand) => {
+    for (let i = 0; i < 4; i++) {
+      const x = 3 + Math.floor(rand() * 26), y = 4 + Math.floor(rand() * 24);
+      c.set(ox + x, oy + y, E.grass![0]!); c.set(ox + x - 1, oy + y - 1, E.grass![1]!); c.set(ox + x + 1, oy + y - 1, E.grass![1]!);
+    }
+  });
+  grass(TERRAIN.grass2, 3, (ox, oy, rand) => {
+    for (let i = 0; i < 3; i++) {
+      const x = 3 + Math.floor(rand() * 26), y = 3 + Math.floor(rand() * 26);
+      const col = i % 2 ? E.paper![3]! : E.accent![3]!;
+      c.set(ox + x, oy + y, col); c.set(ox + x + 1, oy + y, col); c.set(ox + x, oy + y + 1, col); c.set(ox + x + 1, oy + y + 1, E.accent![2]!);
+    }
+  });
 
-  // stone path: offset bricks
-  {
-    const { ox, oy } = at(TERRAIN.path);
-    const r = E.path!;
-    c.fill(ox, oy, TILE, TILE, r[1]!);
-    for (let row = 0; row < 4; row++) {
-      const off = row % 2 ? 8 : 0;
-      for (let col = -1; col < 3; col++) {
-        const bx = col * 16 + off;
-        const reg = new Region(TILE, TILE, r);
-        reg.rect(Math.max(0, bx + 1), row * 8 + 1, Math.min(15, 15 + Math.min(0, bx)), 7);
-        reg.paint(c, ox, oy);
-      }
-    }
-  }
-  // wood planks
-  {
-    const { ox, oy } = at(TERRAIN.wood);
-    const r = E.wood!;
-    c.fill(ox, oy, TILE, TILE, r[2]!);
-    for (let y = 0; y < TILE; y += 8) {
-      c.fill(ox, oy + y + 7, TILE, 1, r[0]!);
-      c.fill(ox, oy + y, TILE, 1, r[3]!);
-      const seam = (y * 7 + 11) % 28;
-      c.fill(ox + seam, oy + y, 1, 7, r[1]!);
-    }
-  }
-  // carpet
+  bricks(TERRAIN.path, E.path![2]!, E.path![1]!, 16, 8); // pale stone paving
+  bricks(TERRAIN.wood, E.floor![3]!, E.floor![2]!, 16, 8); // cream brick office floor (reference)
+
+  // lavender carpet: two-tone zigzag
   {
     const { ox, oy } = at(TERRAIN.carpet);
     const r = E.carpet!;
-    c.fill(ox, oy, TILE, TILE, r[1]!);
-    for (let y = 0; y < TILE; y += 4) for (let x = (y / 4) % 2 ? 2 : 0; x < TILE; x += 4) c.set(ox + x, oy + y, r[2]!);
+    for (let y = 0; y < TILE; y++)
+      for (let x = 0; x < TILE; x++) {
+        const band = Math.floor((y + Math.abs(((x % 16) - 8))) / 8) % 2;
+        c.set(ox + x, oy + y, band ? r[2]! : r[3]!);
+      }
   }
-  // tile floor
+  // lavender-white tiles with a soft rosette
   {
     const { ox, oy } = at(TERRAIN.tileFloor);
     const r = E.tileFloor!;
     c.fill(ox, oy, TILE, TILE, r[2]!);
-    for (let i = 0; i < TILE; i += 16) {
-      c.fill(ox + i, oy, 1, TILE, r[1]!);
-      c.fill(ox, oy + i, TILE, 1, r[1]!);
-      c.fill(ox + i + 1, oy + 1, 1, TILE - 1, r[3]!);
-    }
+    for (let y = 0; y < TILE; y++)
+      for (let x = 0; x < TILE; x++) {
+        const dx = Math.abs((x % 16) - 7.5), dy = Math.abs((y % 16) - 7.5);
+        if (Math.round(dx + dy) === 6 || (dx < 1.5 && dy < 1.5)) c.set(ox + x, oy + y, r[1]!);
+        else if (dx > 6.5 && dy > 6.5) c.set(ox + x, oy + y, r[3]!);
+      }
   }
-  // water
+  // water: blue with light ripples
   {
-    const w = noise(TERRAIN.water, E.water!, 7, 0.02);
-    for (let i = 0; i < 4; i++) {
-      const x = Math.floor(w.rand() * 24) + 2;
-      const y = Math.floor(w.rand() * 28) + 2;
-      c.fill(w.ox + x, w.oy + y, 5, 1, E.water![3]!);
+    const { ox, oy } = at(TERRAIN.water);
+    const rand = rng(7);
+    c.fill(ox, oy, TILE, TILE, E.water![1]!);
+    for (let i = 0; i < 5; i++) {
+      const x = 2 + Math.floor(rand() * 24), y = 2 + Math.floor(rand() * 28);
+      c.fill(ox + x, oy + y, 5, 1, E.water![3]!);
+      c.fill(ox + x + 1, oy + y + 1, 3, 1, E.water![2]!);
     }
   }
-  // wall top (cap): dark with lighter rim
+  // wall cap: grey-green with a lighter inner line (reference wall tops)
   {
     const { ox, oy } = at(TERRAIN.wallTop);
     const r = E.wallTop!;
-    c.fill(ox, oy, TILE, TILE, r[1]!);
-    c.fill(ox, oy, TILE, 2, r[3]!);
-    c.fill(ox, oy + TILE - 2, TILE, 2, r[0]!);
-    for (let y = 6; y < TILE - 2; y += 8) c.fill(ox, oy + y, TILE, 1, r[2]!);
+    c.fill(ox, oy, TILE, TILE, r[2]!);
+    c.fill(ox, oy + 3, TILE, 1, r[3]!);
+    c.fill(ox, oy + TILE - 4, TILE, 1, r[3]!);
+    c.fill(ox, oy + TILE - 1, TILE, 1, r[1]!);
   }
-  // wall face: vertical panel with highlight band and baseboard at bottom
+  // wall face: flat grey-green, soft top band, tan wood baseboard on the low row
   const wallFace = (id: number, base: boolean) => {
     const { ox, oy } = at(id);
     const r = E.wallFace!;
-    c.fill(ox, oy, TILE, TILE, r[2]!);
-    c.fill(ox, oy, TILE, 1, r[0]!);
-    c.fill(ox, oy + 1, TILE, 2, r[3]!);
-    for (let x = 0; x < TILE; x += 16) c.fill(ox + x, oy + 3, 1, TILE - 3, r[1]!);
+    c.fill(ox, oy, TILE, TILE, r[1]!);
+    c.fill(ox, oy, TILE, 2, r[2]!);
+    for (let x = 0; x < TILE; x += 16) c.fill(ox + x, oy + 2, 1, TILE - 2, r[0]!);
     if (base) {
-      c.fill(ox, oy + TILE - 5, TILE, 4, E.wood![1]!);
-      c.fill(ox, oy + TILE - 5, TILE, 1, E.wood![3]!);
-      c.fill(ox, oy + TILE - 1, TILE, 1, E.wood![0]!);
+      c.fill(ox, oy + TILE - 5, TILE, 4, E.wood![3]!);
+      c.fill(ox, oy + TILE - 1, TILE, 1, E.wood![2]!);
     }
     return { ox, oy };
   };
@@ -743,40 +729,39 @@ function terrainTileset(): Canvas {
   wallFace(TERRAIN.wallFaceLow, true);
   {
     const { ox, oy } = wallFace(TERRAIN.wallWindow, false);
-    const frame = new Region(TILE, TILE, E.metal!);
-    frame.rect(5, 6, 22, 22);
-    frame.paint(c, ox, oy);
-    c.fill(ox + 7, oy + 8, 18, 18, E.water![3]!);
-    c.fill(ox + 15, oy + 8, 2, 18, E.metal![2]!);
-    c.fill(ox + 7, oy + 16, 18, 1, E.metal![2]!);
-    for (let i = 0; i < 6; i++) c.set(ox + 9 + i, oy + 22 - i, E.paper![3]!);
+    c.fill(ox + 4, oy + 5, 24, 23, E.dark![1]!);
+    c.fill(ox + 6, oy + 7, 9, 9, E.water![3]!); c.fill(ox + 17, oy + 7, 9, 9, E.water![3]!);
+    c.fill(ox + 6, oy + 18, 9, 8, E.water![2]!); c.fill(ox + 17, oy + 18, 9, 8, E.water![2]!);
+    c.fill(ox + 7, oy + 8, 3, 1, E.paper![3]!);
   }
-  // collision marker (only visible in Tiled; hidden in game)
+  // collision marker (Tiled only; hidden in game)
   {
     const { ox, oy } = at(TERRAIN.collision);
     for (let i = 0; i < TILE; i++) {
-      c.set(ox + i, oy + i, E.accent![2]!, 160);
-      c.set(ox + TILE - 1 - i, oy + i, E.accent![1]!, 160);
-      c.set(ox + i, oy, E.accent![1]!, 160);
-      c.set(ox + i, oy + TILE - 1, E.accent![1]!, 160);
-      c.set(ox, oy + i, E.accent![1]!, 160);
-      c.set(ox + TILE - 1, oy + i, E.accent![1]!, 160);
+      for (const [x, y] of [[i, i], [TILE - 1 - i, i], [i, 0], [i, TILE - 1], [0, i], [TILE - 1, i]] as const)
+        c.set(ox + x, oy + y, E.coral![2]!, 160);
     }
   }
-  // doormat
+  // doormat: lavender rug on cream floor
   {
-    const { ox, oy } = at(TERRAIN.doormat);
-    c.fill(ox, oy, TILE, TILE, E.wood![2]!);
-    const reg = new Region(TILE, TILE, E.carpet!);
-    reg.round(3, 6, 26, 20, 2).paint(c, ox, oy);
+    const { ox, oy } = bricks(TERRAIN.doormat, E.floor![3]!, E.floor![2]!, 16, 8);
+    c.fill(ox + 3, oy + 6, 26, 20, E.carpet![1]!);
+    c.fill(ox + 4, oy + 7, 24, 18, E.carpet![2]!);
   }
   // hedge
   {
-    const h = noise(TERRAIN.hedge, E.leaf!, 9, 0.25);
-    c.fill(h.ox, h.oy + TILE - 3, TILE, 3, E.leaf![0]!);
-    c.fill(h.ox, h.oy, TILE, 2, E.leaf![3]!);
+    const { ox, oy } = at(TERRAIN.hedge);
+    const rand = rng(9);
+    c.fill(ox, oy, TILE, TILE, E.leaf![1]!);
+    for (let i = 0; i < 60; i++) c.set(ox + Math.floor(rand() * TILE), oy + Math.floor(rand() * TILE), rand() < 0.6 ? E.leaf![2]! : E.leaf![0]!);
+    c.fill(ox, oy, TILE, 2, E.leaf![3]!);
   }
-  noise(TERRAIN.sand, E.path!, 11, 0.08, 3 - 1);
+  // sand / pond border: white-lavender
+  {
+    const { ox, oy } = at(TERRAIN.sand);
+    c.fill(ox, oy, TILE, TILE, E.paper![3]!);
+    c.fill(ox, oy + TILE - 1, TILE, 1, E.paper![2]!);
+  }
   return c;
 }
 
@@ -785,8 +770,8 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
   {
     name: "desk", w: 64, h: 64, fw: 2, fh: 1,
     draw: (c) => {
-      new Region(64, 64, E.wood!).round(1, 26, 62, 12, 1).paint(c);
-      new Region(64, 64, E.wood!).rect(3, 37, 58, 22).paint(c);
+      new Region(64, 64, E.paper!).round(1, 26, 62, 12, 1).paint(c);
+      new Region(64, 64, E.metal!).rect(3, 37, 58, 22).paint(c);
       new Region(64, 64, E.metal!).rect(5, 59, 3, 4).paint(c);
       new Region(64, 64, E.metal!).rect(56, 59, 3, 4).paint(c);
       // laptop
@@ -801,8 +786,8 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
   {
     name: "chair", w: 32, h: 48, fw: 1, fh: 1,
     draw: (c) => {
-      new Region(32, 48, E.carpet!).round(7, 8, 18, 20, 2).paint(c);
-      new Region(32, 48, E.carpet!).round(6, 26, 20, 8, 1).paint(c);
+      new Region(32, 48, E.dark!).round(7, 8, 18, 20, 2).paint(c);
+      new Region(32, 48, E.dark!).round(6, 26, 20, 8, 1).paint(c);
       new Region(32, 48, E.metal!).rect(15, 34, 3, 8).paint(c);
       new Region(32, 48, E.metal!).rect(8, 42, 16, 3).paint(c);
     },
@@ -820,11 +805,11 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
   {
     name: "sofa", w: 96, h: 64, fw: 3, fh: 1,
     draw: (c) => {
-      new Region(96, 64, E.carpet!).round(4, 20, 88, 22, 3).paint(c);
-      new Region(96, 64, E.carpet!).round(1, 32, 12, 26, 2).paint(c);
-      new Region(96, 64, E.carpet!).round(83, 32, 12, 26, 2).paint(c);
-      new Region(96, 64, E.carpet!).round(12, 40, 36, 18, 2).paint(c);
-      new Region(96, 64, E.carpet!).round(48, 40, 36, 18, 2).paint(c);
+      new Region(96, 64, E.fabric!).round(4, 20, 88, 22, 3).paint(c);
+      new Region(96, 64, E.fabric!).round(1, 32, 12, 26, 2).paint(c);
+      new Region(96, 64, E.fabric!).round(83, 32, 12, 26, 2).paint(c);
+      new Region(96, 64, E.fabric!).round(12, 40, 36, 18, 2).paint(c);
+      new Region(96, 64, E.fabric!).round(48, 40, 36, 18, 2).paint(c);
     },
   },
   {
@@ -858,7 +843,7 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
     name: "bookshelf", w: 64, h: 96, fw: 2, fh: 1,
     draw: (c) => {
       new Region(64, 96, E.wood!).rect(2, 4, 60, 90).paint(c);
-      const colors: Ramp4[] = [E.carpet!, E.leaf!, E.water!, E.wood!, E.wallFace!];
+      const colors: Ramp4[] = [E.coral!, E.wood!, E.metal!, E.water!, E.wood!];
       for (let s = 0; s < 4; s++) {
         const y = 10 + s * 21;
         c.fill(6, y, 52, 17, E.wood![0]!);
@@ -925,13 +910,13 @@ const FURNITURE: { name: string; w: number; h: number; fw: number; fh: number; d
   {
     name: "pill_station", w: 32, h: 64, fw: 1, fh: 1,
     draw: (c) => {
-      new Region(32, 64, E.wallTop!).round(4, 6, 24, 54, 3).paint(c);
+      new Region(32, 64, E.dark!).round(4, 6, 24, 54, 3).paint(c);
       new Region(32, 64, E.water!).round(7, 10, 18, 24, 2).paint(c);
       // capsule icon
       c.fill(11, 18, 5, 6, E.accent![2]!);
       c.fill(16, 18, 5, 6, E.paper![3]!);
-      c.fill(12, 17, 8, 1, E.wallTop![0]!);
-      c.fill(12, 24, 8, 1, E.wallTop![0]!);
+      c.fill(12, 17, 8, 1, E.dark![1]!);
+      c.fill(12, 24, 8, 1, E.dark![1]!);
       new Region(32, 64, E.metal!).round(9, 40, 14, 10, 1).paint(c);
     },
   },
