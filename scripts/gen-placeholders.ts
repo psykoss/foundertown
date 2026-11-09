@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Canvas, Region, rng, type Ramp4 } from "./lib/pixel.js";
-import { pose, isChin, HEAD_BOTTOM, LEG_TOP, LEG_SPLIT_X, type Pose, type R } from "./lib/pose.js";
+import { pose, isChin, HEAD_BOTTOM, LEG_TOP, LEG_SPLIT_X, WALK_REF, type Pose, type R } from "./lib/pose.js";
 import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, SHEET_H, SHEET_W, TILE, sheetRow,
   type AnimName, type SheetDir,
@@ -177,15 +177,54 @@ function animate(src: Canvas, p: Pose, out: Canvas) {
 
 const BASE = loadBase();
 
+type Parts = { body: Canvas; head: Canvas; face: Canvas };
+
+/** Walk frames imported from the reference recording, split into body / head / face like the base. */
+function loadWalk(): Record<SheetDir, Parts[]> {
+  const strip = Canvas.load(path.join(ROOT, "art/characters/reference/base_walk.png"));
+  const out = {} as Record<SheetDir, Parts[]>;
+  WALK_REF.rows.forEach((dir, row) => {
+    out[dir] = [];
+    for (let f = 0; f < WALK_REF.frames; f++) {
+      const { dy } = WALK_REF.motion[dir][f]!;
+      const parts: Parts = { body: new Canvas(FRAME_W, FRAME_H), head: new Canvas(FRAME_W, FRAME_H), face: new Canvas(FRAME_W, FRAME_H) };
+      for (let y = 0; y < FRAME_H; y++)
+        for (let x = 0; x < FRAME_W; x++) {
+          const h = hexAt(strip, f * FRAME_W + x, row * FRAME_H + y);
+          if (!h) continue;
+          const skin = REF_SKIN.indexOf(h);
+          const isHead = y - dy <= HEAD_BOTTOM[dir] || isChin(dir, x, y - dy);
+          if (isHead && FACE_COLORS.has(h)) {
+            parts.face.set(x, y, h);
+            parts.head.set(x, y, KEY_RAMPS.skin[3]);
+          } else (isHead ? parts.head : parts.body).set(x, y, skin >= 0 ? KEY_RAMPS.skin[skin]! : h);
+        }
+      out[dir].push(parts);
+    }
+  });
+  return out;
+}
+const WALK = loadWalk();
+
+/** The base-body part for a frame, already positioned (idle: base + motion model; walk: reference frame). */
+const sourceCache = new Map<string, Canvas>();
+function source(p: Pose, part: keyof Parts): Canvas {
+  if (p.anim === "walk") return WALK[p.dir][p.f]![part];
+  const key = `${p.dir}:${p.anim}:${p.f}:${part}`;
+  let c = sourceCache.get(key);
+  if (!c) {
+    c = new Canvas(FRAME_W, FRAME_H);
+    animate(BASE[p.dir][part], p, c);
+    sourceCache.set(key, c);
+  }
+  return c;
+}
+
 /** Head silhouette (from the reference body) for a pose, shifted with the head bob. */
 function headMask(p: Pose): Uint8Array {
-  const src = BASE[p.dir].head;
+  const src = source(p, "head"); // includes the chin/nape rows below HEAD_BOTTOM
   const m = new Uint8Array(FRAME_W * FRAME_H);
-  for (let y = 0; y < FRAME_H; y++) // includes the chin/nape rows below HEAD_BOTTOM
-    for (let x = 0; x < FRAME_W; x++) {
-      const ty = y + p.m.headDy;
-      if (hexAt(src, x, y) && ty >= 0 && ty < FRAME_H) m[ty * FRAME_W + x] = 1;
-    }
+  for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (hexAt(src, x, y)) m[y * FRAME_W + x] = 1;
   return m;
 }
 
@@ -194,15 +233,14 @@ function headMask(p: Pose): Uint8Array {
  * Hair and headwear copy this, so they carry exactly the reference head's shading.
  */
 function headShades(p: Pose): Int8Array {
-  const src = BASE[p.dir].head;
+  const src = source(p, "head");
   const out = new Int8Array(FRAME_W * FRAME_H).fill(-1);
   for (let y = 0; y < FRAME_H; y++)
     for (let x = 0; x < FRAME_W; x++) {
       const h = hexAt(src, x, y);
-      const ty = y + p.m.headDy;
-      if (!h || ty < 0 || ty >= FRAME_H) continue;
+      if (!h) continue;
       const i = (KEY_RAMPS.skin as readonly string[]).indexOf(h);
-      if (i >= 0) out[ty * FRAME_W + x] = i;
+      if (i >= 0) out[y * FRAME_W + x] = i;
     }
   return out;
 }
@@ -210,11 +248,10 @@ function headShades(p: Pose): Int8Array {
 /** Body silhouette (torso, arms, legs — animated) for a pose. */
 const bodyMaskCache = new Map<string, Uint8Array>();
 function bodyMask(p: Pose): Uint8Array {
-  const key = `${p.dir}:${p.m.bodyDy}:${p.m.liftL}:${p.m.liftR}:${p.m.stride}`;
+  const key = `${p.dir}:${p.anim}:${p.f}`;
   let m = bodyMaskCache.get(key);
   if (!m) {
-    const c = new Canvas(FRAME_W, FRAME_H);
-    animate(BASE[p.dir].body, p, c);
+    const c = source(p, "body");
     m = new Uint8Array(FRAME_W * FRAME_H);
     for (let i = 0; i < m.length; i++) m[i] = c.data[i * 4 + 3] ? 1 : 0;
     bodyMaskCache.set(key, m);
@@ -254,9 +291,9 @@ const drawers: Record<string, Drawer> = {
         if (dx * dx + dy * dy <= 1) f.dot(x, y, FIXED_COLORS.shadow, 70);
       }
   },
-  "body/body_01.png": (f) => animate(BASE[f.dir].body, f.p, f.c),
-  "body/head_01.png": (f) => animate(BASE[f.dir].head, f.p, f.c),
-  "face/face_01.png": (f) => animate(BASE[f.dir].face, f.p, f.c),
+  "body/body_01.png": (f) => f.c.blit(source(f.p, "body"), 0, 0),
+  "body/head_01.png": (f) => f.c.blit(source(f.p, "head"), 0, 0),
+  "face/face_01.png": (f) => f.c.blit(source(f.p, "face"), 0, 0),
 
   // ── hair ──
   "hair/hair_short_01.png": (f) => hairCap(f, 2),
@@ -483,14 +520,13 @@ function footwear(f: Frame, shaft: number) {
   const { p } = f;
   const m = bodyMask(p);
   const r = f.bodyReg("primary");
-  // per column: the lowest 4 (+shaft) body pixels are the foot → follows lifted/striding legs
+  // per column: the lowest 3 (+shaft) body pixels are the foot → follows lifted/striding legs
   for (let x = 0; x < FRAME_W; x++) {
     let yb = -1;
     for (let y = FRAME_H - 1; y >= 55; y--) if (m[y * FRAME_W + x]) { yb = y; break; }
     if (yb < 0) continue;
-    for (let y = yb; y >= yb - 3 - shaft && y >= 55; y--) if (m[y * FRAME_W + x]) r.px(x, y);
+    for (let y = yb; y >= yb - 2 - shaft && y >= 55; y--) if (m[y * FRAME_W + x]) r.px(x, y); // 3-row foot like the reference
   }
-  if (f.dir === "left") r.rect(p.feet[1].x - 1, 59, 2, 2); // toe
   const sole = f.bodyReg("secondary");
   for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (r.has(x, y) && !r.has(x, y + 1)) sole.px(x, y);
 }

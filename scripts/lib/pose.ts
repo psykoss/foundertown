@@ -7,7 +7,15 @@
  *   head + upper body are fixed (bobbing read as the head sinking into the torso)
  *   walk: legs lift (front/back) or stride (side); idle is static
  */
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { AnimName, SheetDir } from "../../shared/src/spec.js";
+
+/** Walk cycle imported from the reference recording (scripts/tools/import_walk_reference.py). */
+export const WALK_REF = JSON.parse(
+  fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../art/characters/reference/base_walk.json"), "utf8"),
+) as { frames: number; rows: SheetDir[]; motion: Record<SheetDir, { dx: number; dy: number }[]> };
 
 export interface R {
   x: number;
@@ -51,13 +59,15 @@ export interface FrameMotion {
 
 export function motion(dir: SheetDir, anim: AnimName, f: number): FrameMotion {
   if (anim === "idle") return { headDy: MOTION.idleHead[f]!, bodyDy: 0, liftL: 0, liftR: 0, stride: 0 };
-  const bob = MOTION.walkBob[f]!;
-  if (dir === "left") return { headDy: bob, bodyDy: bob, liftL: 0, liftR: 0, stride: MOTION.sideStride[f]! };
-  return { headDy: bob, bodyDy: bob, liftL: MOTION.liftA[f]!, liftR: MOTION.liftB[f]!, stride: 0 };
+  // walk: legs/arms come from the reference frames; the only rigid motion is the whole-body bob
+  const bob = WALK_REF.motion[dir][f]!.dy;
+  return { headDy: bob, bodyDy: bob, liftL: 0, liftR: 0, stride: 0 };
 }
 
 export interface Pose {
   dir: SheetDir;
+  anim: AnimName;
+  f: number;
   m: FrameMotion;
   head: R;
   torso: R;
@@ -77,7 +87,7 @@ export function pose(dir: SheetDir, anim: AnimName, f: number): Pose {
   if (dir === "left") {
     const s = m.stride;
     return {
-      dir, m,
+      dir, anim, f, m,
       head: dy({ x: 8, y: 29, w: 16, h: 17 }, m.headDy),
       torso: dy({ x: 11, y: 46, w: 9, h: 9 }, m.bodyDy),
       hip: dy({ x: 11, y: 52, w: 9, h: 5 }, m.bodyDy),
@@ -88,7 +98,7 @@ export function pose(dir: SheetDir, anim: AnimName, f: number): Pose {
     };
   }
   return {
-    dir, m,
+    dir, anim, f, m,
     head: dy({ x: 6, y: 29, w: 20, h: 16 }, m.headDy),
     torso: dy({ x: 9, y: 44, w: 14, h: 11 }, m.bodyDy),
     hip: dy({ x: 10, y: 52, w: 12, h: 4 }, m.bodyDy),

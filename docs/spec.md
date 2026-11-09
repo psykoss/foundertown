@@ -29,9 +29,9 @@ Frame update order: input → logic → render → debug → HUD (4 Hz).
 
 ## 4. Character template
 - Frame 32×64, feet on row 61, origin bottom-center. Body proportions follow the reference (big head rows 29–44, body 44–61).
-- Sheet 192×384: 6 columns × 6 rows, rows `idle_down, idle_up, idle_left, walk_down, walk_up, walk_left`; idle uses columns 0–3, walk 0–5.
+- Sheet 128×384: 4 columns × 6 rows, rows `idle_down, idle_up, idle_left, walk_down, walk_up, walk_left`; idle 4 frames, walk 4 frames at 8 fps.
 - `right` is `left` mirrored at render time (v1). Asymmetric items will need a real `right` row later.
-- Motion model (`scripts/lib/pose.ts`): head and upper body never move (a bobbing head reads as sinking into the torso at this size). Idle is static; walk animates legs only — lift 2/1 px alternately (front/back) or stride ±1/2 px (side).
+- Idle: static base body. Walk: 4-frame cycle imported from the reference recording (`art/characters/reference/base_walk.png`): real leg strides and arm swing; front/back alternate step/pass frames with a 1px whole-body lift on pass frames (side: 1px drop). The head never moves relative to the body.
 
 ### Layers (back → front, facing down/left)
 `shadow, back_accessory, hair_back, body, bottom, shoes, top, outerwear, head, face, hair_front, headwear, face_accessory, hand_item`

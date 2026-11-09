@@ -19,7 +19,7 @@ export type SheetDir = (typeof SHEET_DIRS)[number];
 
 export const ANIMS = {
   idle: { frames: 4, fps: 4 },
-  walk: { frames: 6, fps: 12 },
+  walk: { frames: 4, fps: 8 }, // 4-frame cycle from the reference recording (each pose held ~140 ms)
 } as const;
 export type AnimName = keyof typeof ANIMS;
 export const ANIM_ORDER: AnimName[] = ["idle", "walk"];

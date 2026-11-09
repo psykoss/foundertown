@@ -29,12 +29,14 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 - Tile 32×32. Character frame 32×64, feet at row 61, anchored bottom-center.
 - Integer zoom only, `pixelArt: true`, rounded camera. Never scale sprites by non-integers.
 - Grid movement, one tile per `STEP_MS` (180 ms). 4 directions; `right` = `left` mirrored.
-- Sheet template: 6 columns × 6 rows (192×384). Rows anim-major: idle_down, idle_up, idle_left, walk_down, walk_up, walk_left. Idle 4 frames, walk 6.
+- Sheet template: 4 columns × 6 rows (128×384). Rows anim-major: idle_down, idle_up, idle_left, walk_down, walk_up, walk_left. Idle 4 frames, walk 4 (8 fps).
 - Character art: pure black outline, key ramps for recolorable parts (skin = yellow keys, primary = magenta keys, secondary = cyan keys), fixed colors from `FIXED_COLORS`.
 - Depth = feet / base y for characters and furniture. Ground layers < 0, `above` layer 2,000,000, debug 3,000,000.
 
 ## Characters
-- Base body = `art/characters/reference/base_body.png` (down / up / left, 96×64). Idle and walk frames are derived from it by the shared motion model in `scripts/lib/pose.ts`. **All clothing drawers use `pose()` so they move with the body.**
+- Base body = `art/characters/reference/base_body.png` (down / up / left, 96×64) → idle frames.
+- Walk = `art/characters/reference/base_walk.png` + `.json` (4 frames × down/up/left, imported from the reference recording with `scripts/tools/import_walk_reference.py`). Heads are the base head riding the whole-body bob in the JSON; legs/arms are the reference poses.
+- Clothing is cut per frame from that frame's body silhouette (`source()` / `bodyMask()`), so it follows every pose. **All clothing drawers use `pose()` + the masks so they move with the body.**
 - Items: `art/characters/items.json` (source) → copied to `client/public/assets/characters/items.json`. An item = slot + parts (layer + sheet) + channels (+ optional `unlock`).
 - Layer draw order per direction: `LAYER_ORDER` in `shared/src/avatar.ts` (facing up, back layers move in front).
 - The base body is split into `body` (torso/limbs) and `head` layers; `head` is drawn above top/outerwear so clothing never covers the chin. The chin/jaw extends below the head rows in the middle columns (`isChin` in `scripts/lib/pose.ts`: row 45 cols 10–21, row 46 cols 11–20) and is part of the head layer; shirts put the chin's cast shadow on row 47.
