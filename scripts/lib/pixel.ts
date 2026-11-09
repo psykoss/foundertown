@@ -119,6 +119,8 @@ export class Region {
       inside?: (x: number, y: number) => boolean;
       /** Round-volume shading: light from top-front, darker toward the sides and bottom. */
       volume?: boolean;
+      /** Shift the whole shape N shades darker (e.g. legs, which sit in the body's shadow). */
+      dim?: number;
     } = {},
   ): void {
     const run = (x: number, y: number, dx: number, dy: number) => {
@@ -135,16 +137,18 @@ export class Region {
         if (opts.flat) shade = 2;
         else if (edge && outline) shade = 0;
         else if (opts.volume) {
-          // position inside the shape's row/column span → 0..1
-          const l = run(x, y, -1, 0), r = run(x, y, 1, 0), t = run(x, y, 0, -1), b = run(x, y, 0, 1);
-          const u = l / Math.max(1, l + r); // 0 = left edge, 1 = right edge
-          const v = t / Math.max(1, t + b); // 0 = top, 1 = bottom
-          const side = Math.abs(u - 0.42) * 2; // light slightly from the left
-          let light = 1 - side * side * 0.9 - v * 0.55;
-          if (t <= 1 && side < 0.6) light += 0.35; // top highlight band
-          if (b === 1) light -= 0.25; // contact shadow on the bottom row
-          shade = light > 0.78 ? 3 : light > 0.32 ? 2 : light > -0.1 ? 1 : 0;
-          if (shade === 0 && l > 0 && r > 0 && b > 0) shade = 1; // keep darkest shade for edges
+          // Cel shading measured from the reference body (light from top-front):
+          //  - one flat lit shade over most of the shape
+          //  - a curved terminator: mid shade starts high at the sides, low in the center
+          //  - darkest shade only in the bottom corners
+          const l = run(x, y, -1, 0) - 1, r = run(x, y, 1, 0) - 1; // interior px to the outline
+          const t = run(x, y, 0, -1) - 1, b = run(x, y, 0, 1) - 1;
+          const d = Math.min(l, r);
+          const v = (t + 0.5) / (t + b + 1);
+          const T = d <= 0 ? 0.55 : d === 1 ? 0.68 : d <= 3 ? 0.78 : 0.86;
+          shade = v > T ? 2 : 3;
+          if (b <= 0 && d <= 1) shade = 1;
+          shade = Math.max(1, shade - (opts.dim ?? 0));
         } else if (!this.has(x - 2, y) || !this.has(x, y - 2)) shade = 3;
         else if (!this.has(x + 2, y) || !this.has(x, y + 2)) shade = 1;
         // Edges that only touch the silhouette's interior (e.g. hair meeting skin) get the ramp's dark shade,

@@ -46,10 +46,16 @@ class Frame {
     return this.p.dir;
   }
   /** A shaded region with the black outline used by all character art. */
-  reg(ch: Ch | Ramp4, inside?: (x: number, y: number) => boolean): Region {
+  reg(ch: Ch | Ramp4, inside?: (x: number, y: number) => boolean, dim = 0): Region {
     const r = new Region(FRAME_W, FRAME_H, typeof ch === "string" ? KEY_RAMPS[ch] : ch);
-    this.ops.push(() => r.paint(this.c, 0, 0, { outlineColor: BLACK, inside, volume: true }));
+    this.ops.push(() => r.paint(this.c, 0, 0, { outlineColor: BLACK, inside, volume: true, dim }));
     return r;
+  }
+  /** Region for clothing: soft edge where it meets the body/head, black on the outer silhouette. */
+  bodyReg(ch: Ch, dim = 0): Region {
+    const m = bodyMask(this.p);
+    const hm = headMask(this.p);
+    return this.reg(ch, (x, y) => x >= 0 && y >= 0 && x < FRAME_W && y < FRAME_H && (m[y * FRAME_W + x] === 1 || hm[y * FRAME_W + x] === 1), dim);
   }
   /** Region for hair/headwear: black outline only on the head silhouette, soft edge where it meets skin. */
   headReg(ch: Ch): Region {
@@ -57,7 +63,7 @@ class Frame {
     return this.reg(ch, (x, y) => x >= 0 && y >= 0 && x < FRAME_W && y < FRAME_H && m[y * FRAME_W + x] === 1);
   }
   /** Shift a painted key-ramp pixel one shade darker (d=-1) or lighter (d=+1). Outline/fixed colors untouched. */
-  shift(x: number, y: number, d: -1 | 1) {
+  shift(x: number, y: number, d: number) {
     this.ops.push(() => {
       const h = hexAt(this.c, x, y);
       if (!h) return;
@@ -72,7 +78,7 @@ class Frame {
     });
   }
   /** Apply `shift` to every pixel of a region matching a predicate (call AFTER the region's shapes are set). */
-  detail(r: Region, d: -1 | 1, when: (x: number, y: number) => boolean) {
+  detail(r: Region, d: number, when: (x: number, y: number) => boolean) {
     for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (r.has(x, y) && when(x, y)) this.shift(x, y, d);
   }
   dot(x: number, y: number, hex: string, alpha = 255) {
@@ -172,6 +178,33 @@ function headMask(p: Pose): Uint8Array {
   return m;
 }
 
+/** Body silhouette (torso, arms, legs — animated) for a pose. */
+const bodyMaskCache = new Map<string, Uint8Array>();
+function bodyMask(p: Pose): Uint8Array {
+  const key = `${p.dir}:${p.m.bodyDy}:${p.m.liftL}:${p.m.liftR}:${p.m.stride}`;
+  let m = bodyMaskCache.get(key);
+  if (!m) {
+    const c = new Canvas(FRAME_W, FRAME_H);
+    animate(BASE[p.dir].body, p, c);
+    m = new Uint8Array(FRAME_W * FRAME_H);
+    for (let i = 0; i < m.length; i++) m[i] = c.data[i * 4 + 3] ? 1 : 0;
+    bodyMaskCache.set(key, m);
+  }
+  return m;
+}
+
+/** Fill a region with (body mask ∩ predicate) — clothing follows the body's real contour. */
+function fromBody(r: Region, p: Pose, keep: (x: number, y: number) => boolean, growPx = 0): Region {
+  const m = bodyMask(p);
+  for (let y = 0; y < FRAME_H; y++)
+    for (let x = 0; x < FRAME_W; x++) {
+      if (!m[y * FRAME_W + x] || !keep(x, y)) continue;
+      for (let oy = -growPx; oy <= growPx; oy++)
+        for (let ox = -growPx; ox <= growPx; ox++) if (Math.abs(ox) + Math.abs(oy) <= growPx && oy >= 0) r.px(x + ox, y + oy);
+    }
+  return r;
+}
+
 /** Fill a region with (head mask ∩ predicate), grown by `grow` px for volume. */
 function fromHead(r: Region, p: Pose, keep: (x: number, y: number) => boolean, growPx = 0): Region {
   const m = headMask(p);
@@ -205,7 +238,6 @@ const drawers: Record<string, Drawer> = {
     if (f.dir === "down") r.round(h.x, h.y + 8, h.w, 16, 2);
     else if (f.dir === "up") r.round(h.x, h.y + 6, h.w, 18, 3);
     else r.round(h.x + 8, h.y + 6, 9, 17, 2);
-    f.detail(r, -1, (x, y) => r.has(x - 1, y) && r.has(x + 1, y) && (x - h.x) % 3 === 1 && y % 4 !== 0);
   },
   "hair/hair_bun_01.png": (f) => {
     const h = f.p.head;
@@ -350,88 +382,88 @@ function hairCap(f: Frame, sideLen: number) {
     fromHead(r, p, (x, y) => y <= h.y + 7 || (x >= h.x + 9 && y <= h.y + 6 + Math.max(6, sideLen)));
     r.rect(h.x + 1, h.y + 8, 4, 1); // fringe tip
   }
-  hairDetail(f, r);
 }
 
-function sleeve(f: Frame, arm: R, len: number) {
-  const h = Math.min(len, arm.h - 2);
-  const r = f.reg("primary");
-  rr(r, { x: arm.x, y: arm.y, w: arm.w, h }, 1);
-  if (h >= 6) f.detail(r, -1, (x, y) => y === arm.y + 4 && r.has(x - 1, y) && r.has(x + 1, y)); // elbow crease
-}
+// Clothing is cut from the animated body silhouette, so it has the same rounded contour as the body.
+// Rows/cols below are measured from the reference (front/back: torso cols 11–20, arms outside;
+// shoulders row 45, hands rows 52–54, legs 55–61; side: torso rows 46–56, legs 57–61).
 
-/** Folds on a torso region: shadow under the head, armpit creases, hem. */
-function torsoDetail(f: Frame, body: Region) {
-  const t = f.p.torso;
-  const inner = (x: number, y: number) => body.has(x - 1, y) && body.has(x + 1, y) && body.has(x, y - 1);
-  if (f.dir === "left") {
-    f.detail(body, -1, (x, y) => inner(x, y) && y <= t.y + 2 && x <= t.x + 5); // under the chin
-    f.detail(body, -1, (x, y) => inner(x, y) && y >= t.y + 4 && y <= t.y + 6 && x === t.x + 6);
-    return;
-  }
-  const cx = t.x + t.w / 2;
-  // cast shadow of the head on the chest/back
-  f.detail(body, -1, (x, y) => inner(x, y) && y <= t.y + 2 && Math.abs(x + 0.5 - cx) <= 4);
-  // armpit creases
-  f.detail(body, -1, (x, y) => inner(x, y) && (y === t.y + 4 || y === t.y + 5) && (x === t.x + 2 || x === t.x + t.w - 3));
-  f.detail(body, -1, (x, y) => inner(x, y) && y === t.y + 6 && (x === t.x + 3 || x === t.x + t.w - 4));
-}
+const isFrontBack = (f: Frame) => f.dir !== "left";
+const torsoCol = (x: number) => x >= 11 && x <= 20;
 
-function shirt(f: Frame, sleeveLen: number, collar: boolean) {
-  const { p } = f;
-  if (f.dir === "left") {
-    const body = f.reg("primary");
-    rr(body, { ...p.torso, h: p.torso.h - 1 }, 1);
-    torsoDetail(f, body);
-    sleeve(f, p.arms[1], sleeveLen);
+/** Cast shadow of the head + arm/torso separation, as in the reference. */
+function torsoDetail(f: Frame, r: Region) {
+  const inner = (x: number, y: number) => r.has(x - 1, y) && r.has(x + 1, y) && r.has(x, y - 1) && r.has(x, y + 1);
+  const y0 = 45 + f.p.m.bodyDy;
+  if (f.dir === "up") {
+    f.detail(r, -2, (x, y) => inner(x, y) && y <= y0 + 1 && Math.abs(x + 0.5 - 16) <= 4);
+  } else if (f.dir === "down") {
+    f.detail(r, -1, (x, y) => inner(x, y) && y === y0 && Math.abs(x + 0.5 - 16) <= 5);
   } else {
-    p.arms.forEach((a) => sleeve(f, a, sleeveLen));
-    const body = f.reg("primary");
-    rr(body, { ...p.torso, x: p.torso.x + 1, w: p.torso.w - 2, h: p.torso.h - 1 }, 1);
-    if (f.dir === "down") body.rect(p.torso.x + 6, p.torso.y, 2, 1, false); // neckline
-    torsoDetail(f, body);
+    f.detail(r, -1, (x, y) => inner(x, y) && y <= y0 + 1 && x <= 15);
   }
-  if (collar && f.dir === "down") f.reg("secondary").rect(p.torso.x + 4, p.torso.y, 6, 2);
+  if (isFrontBack(f)) f.detail(r, -1, (x, y) => inner(x, y) && y >= y0 + 2 && (x === 11 || x === 20));
 }
 
-function jacket(f: Frame, widen: number) {
+function shirt(f: Frame, sleeveRows: number, collar: boolean) {
   const { p } = f;
-  const t = p.torso;
-  if (f.dir === "left") {
-    const body = f.reg("primary");
-    rr(body, { x: t.x - widen, y: t.y, w: t.w + widen * 2, h: t.h }, 1);
-    torsoDetail(f, body);
-    sleeve(f, p.arms[1], 99);
-  } else {
-    p.arms.forEach((a) => sleeve(f, a, 99));
-    const body = f.reg("primary");
-    rr(body, { x: t.x + 1 - widen, y: t.y, w: t.w - 2 + widen * 2, h: t.h + widen }, 1);
-    torsoDetail(f, body);
+  const y0 = 45 + p.m.bodyDy;
+  const r = f.bodyReg("primary");
+  if (isFrontBack(f)) fromBody(r, p, (x, y) => y >= y0 && y <= y0 + 8 && (torsoCol(x) || y <= y0 + 1));
+  else fromBody(r, p, (_x, y) => y >= y0 + 1 && y <= y0 + 8 + Math.min(1, sleeveRows - 4));
+  if (f.dir === "down") r.px(15, y0, false).px(16, y0, false); // neckline
+  torsoDetail(f, r);
+  if (isFrontBack(f)) armWear(f, sleeveRows, 0);
+  if (collar && f.dir === "down") f.bodyReg("secondary").rect(13, y0, 6, 1);
+}
+
+function jacket(f: Frame, grow: number) {
+  const { p } = f;
+  const y0 = 45 + p.m.bodyDy;
+  const r = f.bodyReg("primary");
+  if (isFrontBack(f)) fromBody(r, p, (x, y) => y >= y0 && y <= y0 + 9 && (torsoCol(x) || y <= y0 + 1), grow);
+  else fromBody(r, p, (_x, y) => y >= y0 + 1 && y <= y0 + 9, grow);
+  torsoDetail(f, r);
+  if (isFrontBack(f)) armWear(f, 7, grow);
+}
+
+/** Sleeves as their own rounded shapes (outlined against the torso, like the reference arms). */
+function armWear(f: Frame, rows: number, grow: number) {
+  const y0 = 45 + f.p.m.bodyDy;
+  for (const side of [(x: number) => x <= 10, (x: number) => x >= 21]) {
+    const r = f.bodyReg("primary");
+    fromBody(r, f.p, (x, y) => side(x) && y >= y0 + 1 && y < y0 + rows, grow);
   }
 }
 
 function legsWear(f: Frame, len: number) {
   const { p } = f;
-  for (const leg of p.legs) {
-    const r = f.reg("primary");
-    rr(r, { x: leg.x, y: leg.y - 1, w: leg.w, h: Math.min(len, leg.h - 1) });
-    if (len > 4) f.detail(r, -1, (x, y) => y === leg.y + 2 && r.has(x - 1, y) && r.has(x + 1, y) && x % 2 === 0); // knee fold
-  }
-  const hip = f.reg("primary");
-  rr(hip, p.hip, 1);
-  if (f.dir !== "left") f.detail(hip, -1, (x, y) => (x === 15 || x === 16) && y >= p.hip.y + 2); // crotch seam
-  f.detail(hip, -1, (x, y) => y === p.hip.y + 1 && hip.has(x - 1, y) && hip.has(x + 1, y) && x % 3 === 0); // waistband
+  const hipTop = (isFrontBack(f) ? 52 : 53) + p.m.bodyDy;
+  const legTop = isFrontBack(f) ? 55 : 57;
+  const bottom = Math.min(59, legTop + len);
+  const hipCols = (x: number) => (isFrontBack(f) ? x >= 10 && x <= 21 : true);
+  // hips: in light; legs: one shade down (they sit in the body's shadow, like the reference legs)
+  const hip = f.bodyReg("primary");
+  fromBody(hip, p, (x, y) => y >= hipTop && y < legTop && hipCols(x));
+  const legs = f.bodyReg("primary", 1);
+  fromBody(legs, p, (x, y) => y >= legTop - 1 && y <= bottom && hipCols(x));
+  if (isFrontBack(f)) f.detail(hip, -1, (x, y) => (x === 15 || x === 16) && y >= hipTop + 2);
 }
 
 function footwear(f: Frame, shaft: number) {
   const { p } = f;
-  const feet = f.dir === "left" ? [p.feet[0], p.feet[1]] : p.feet;
-  feet.forEach((ft) => {
-    const r = f.reg("primary");
-    r.round(ft.x, ft.y - shaft, ft.w, ft.h + shaft, 1);
-    if (f.dir === "left") r.rect(ft.x - 1, ft.y + 1, 2, ft.h - 1); // toe
-    f.reg("secondary").rect(ft.x + (f.dir === "left" ? -1 : 0), ft.y + ft.h - 2, ft.w + (f.dir === "left" ? 1 : 0), 1);
-  });
+  const m = bodyMask(p);
+  const r = f.bodyReg("primary");
+  // per column: the lowest 4 (+shaft) body pixels are the foot → follows lifted/striding legs
+  for (let x = 0; x < FRAME_W; x++) {
+    let yb = -1;
+    for (let y = FRAME_H - 1; y >= 55; y--) if (m[y * FRAME_W + x]) { yb = y; break; }
+    if (yb < 0) continue;
+    for (let y = yb; y >= yb - 3 - shaft && y >= 55; y--) if (m[y * FRAME_W + x]) r.px(x, y);
+  }
+  if (f.dir === "left") r.rect(p.feet[1].x - 1, 59, 2, 2); // toe
+  const sole = f.bodyReg("secondary");
+  for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (r.has(x, y) && !r.has(x, y + 1)) sole.px(x, y);
 }
 
 function buildSheet(drawer: Drawer): Canvas {

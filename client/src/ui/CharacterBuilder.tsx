@@ -62,7 +62,7 @@ export function CharacterBuilder() {
           <div className="label">Skin</div>
           <div className="swatches">
             {Object.entries(SKIN_RAMPS).map(([k, ramp]) => (
-              <button key={k} title={k} className={"swatch" + (draft.skin === k ? " on" : "")} style={{ background: ramp[2] }}
+              <button key={k} title={k} className={"swatch" + (draft.skin === k ? " on" : "")} style={{ background: `linear-gradient(${ramp[3]} 60%, ${ramp[2]} 60%)` }}
                 onClick={() => setDraft((d) => ({ ...d, skin: k }))} />
             ))}
           </div>
@@ -92,7 +92,7 @@ export function CharacterBuilder() {
               <div className="label">{ch === "primary" ? "Color" : "Accent"}</div>
               <div className="swatches">
                 {Object.entries(rampLibraryFor(slot)).map(([k, ramp]) => (
-                  <button key={k} title={k} className={"swatch" + (choice?.[ch] === k ? " on" : "")} style={{ background: ramp[2] }}
+                  <button key={k} title={k} className={"swatch" + (choice?.[ch] === k ? " on" : "")} style={{ background: `linear-gradient(${ramp[3]} 60%, ${ramp[2]} 60%)` }}
                     onClick={() => choice && update({ [slot]: { ...choice, [ch]: k } })} />
                 ))}
               </div>

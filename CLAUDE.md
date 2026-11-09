@@ -39,7 +39,7 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 - Layer draw order per direction: `LAYER_ORDER` in `shared/src/avatar.ts` (facing up, back layers move in front).
 - The base body is split into `body` (torso/limbs) and `head` layers; `head` is drawn above top/outerwear so clothing never covers the chin.
 - The head is an oval (reference silhouette). Hair and headwear are cut from that silhouette (`fromHead`) and must not grow outside it — otherwise the head reads as round. Use `f.headReg()` for them: black outline only on the outer silhouette, the ramp's dark shade where hair meets skin (no black line across the forehead).
-- Shading: character regions use round-volume shading (`volume: true` — lighter center/top, darker sides/bottom) plus detail passes via `f.detail()`: hair strands + sheen, head cast shadow on the torso, armpit/elbow creases, knee folds, seams. Keep new items consistent with this.
+- Shading = the reference's cel shading (`volume: true` in `Region.paint`): one flat lit shade, a curved terminator (mid shade starts ~55% down at the sides, lower toward the center), darkest shade only in bottom corners; legs one shade darker (`dim`). Clothing is cut from the animated body silhouette (`fromBody`), sleeves are separate outlined shapes, edges meeting skin are soft. Details are limited to the head's cast shadow and arm/torso separation — no strands or noise.
 - Compositor bakes each avatar once into a single texture (`client/src/game/avatar/compositor.ts`), cached by appearance.
 
 ## Workflow
