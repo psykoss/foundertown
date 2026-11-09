@@ -154,13 +154,13 @@ export class Region {
           shade = Math.max(1, shade - (opts.dim ?? 0));
         } else if (!this.has(x - 2, y) || !this.has(x, y - 2)) shade = 3;
         else if (!this.has(x + 2, y) || !this.has(x, y + 2)) shade = 1;
-        // Edges that only touch the silhouette's interior (e.g. hair meeting skin) get the ramp's dark shade,
+        // Edges that only touch the silhouette's interior (e.g. hair meeting skin) get the ramp's dark tone,
         // not the black outline — black is reserved for the outer silhouette.
         let color = this.ramp[shade]!;
         if (shade === 0 && opts.outlineColor) {
           const outside = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].filter(([nx, ny]) => !this.has(nx!, ny!));
           const soft = !!opts.inside && outside.every(([nx, ny]) => opts.inside!(nx!, ny!));
-          color = soft ? this.ramp[0]! : opts.outlineColor;
+          color = soft ? this.ramp[1]! : opts.outlineColor; // soft edge: a visible dark tone of the item, not near-black
         }
         c.set(ox + x, oy + y, color);
       }

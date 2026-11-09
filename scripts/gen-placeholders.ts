@@ -181,7 +181,7 @@ const BASE = loadBase();
 function headMask(p: Pose): Uint8Array {
   const src = BASE[p.dir].head;
   const m = new Uint8Array(FRAME_W * FRAME_H);
-  for (let y = 0; y <= HEAD_BOTTOM[p.dir]; y++)
+  for (let y = 0; y < FRAME_H; y++) // includes the chin/nape rows below HEAD_BOTTOM
     for (let x = 0; x < FRAME_W; x++) {
       const ty = y + p.m.headDy;
       if (hexAt(src, x, y) && ty >= 0 && ty < FRAME_H) m[ty * FRAME_W + x] = 1;
