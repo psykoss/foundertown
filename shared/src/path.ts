@@ -26,7 +26,7 @@ export function findPath(grid: CollisionGrid, start: TilePos, goal: TilePos, max
     for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]] as const) {
       const nx = cx + dx;
       const ny = cy + dy;
-      if (grid.isBlocked(nx, ny)) continue;
+      if (!grid.canStep(cx, cy, nx, ny)) continue;
       const ni = ny * w + nx;
       if (prev[ni] !== -1) continue;
       prev[ni] = cur;

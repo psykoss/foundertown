@@ -54,6 +54,21 @@ describe("movement", () => {
   });
 });
 
+describe("thin walls (edges)", () => {
+  it("blocks crossing an edge but not standing next to it", () => {
+    const g = new CollisionGrid(3, 2);
+    g.blockEdge(1, 0, "W"); // wall between (0,0) and (1,0)
+    expect(g.canStep(0, 0, 1, 0)).toBe(false);
+    expect(g.canStep(1, 0, 0, 0)).toBe(false);
+    expect(g.canStep(0, 1, 1, 1)).toBe(true);
+    let w = createWalker(0, 0);
+    w = stepWalker(w, "right", 16, 100, g);
+    expect(w).toMatchObject({ tileX: 0, moving: false, dir: "right" });
+    const p = findPath(g, { x: 0, y: 0 }, { x: 1, y: 0 })!;
+    expect(p.length).toBe(3); // goes around through row 1
+  });
+});
+
 describe("pathfinding", () => {
   it("routes around walls", () => {
     const g = new CollisionGrid(5, 3);

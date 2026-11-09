@@ -50,61 +50,47 @@ const fill = (l: number[], x: number, y: number, w: number, h: number, id: numbe
 };
 const block = (x: number, y: number, w = 1, h = 1) => fill(collision, x, y, w, h, TERRAIN.collision);
 
-// ── floors ──
-fill(ground, 0, 0, W, H, TERRAIN.wood); // cream brick (office default)
+// ── floors ── (rooms run wall-to-wall: vertical walls are thin edges, not tile columns)
+fill(ground, 0, 3, W, H - 3, TERRAIN.wood); // cream brick (office default)
 fill(ground, 2, 4, 17, 10, TERRAIN.carpet); // desk area (lavender carpet, like the reference office)
-fill(ground, 21, 3, 12, 11, TERRAIN.floorYellow); // kitchen
-fill(ground, 21, 15, 12, 11, TERRAIN.carpet); // library
-fill(ground, 1, 19, 9, 7, TERRAIN.carpet); // lounge
-// meeting room: cream brick
+fill(ground, 20, 3, 14, 10, TERRAIN.floorYellow); // kitchen
+fill(ground, 20, 15, 14, 12, TERRAIN.carpet); // library
+fill(ground, 0, 19, 10, 8, TERRAIN.carpet); // lounge
 
 // ── walls ──
-/**
- * Thin walls (reference style).
- * Horizontal wall (args keep the old 3-row band y..y+2): drawn as ONE row at y+2 — face with an 8px cap on
- * top; rows y and y+1 become floor of the room above. Vertical wall: 8px band down the tile center.
- */
+const edges = layer();
+/** Horizontal wall: the back wall of the room below, a 2-row face (thin cap line on top) at rows y, y+1. */
 function hwall(y: number, x1: number, x2: number, gaps: number[] = [], windows: number[] = []) {
   for (let x = x1; x <= x2; x++) {
     if (gaps.includes(x)) continue;
-    set(walls, x, y + 2, windows.includes(x) ? TERRAIN.wallHWindow : TERRAIN.wallH);
-    block(x, y + 2);
+    set(walls, x, y, windows.includes(x) ? TERRAIN.faceTopWindow : TERRAIN.faceTop);
+    set(walls, x, y + 1, TERRAIN.faceBottom);
+    block(x, y, 1, 2);
   }
 }
+/** Vertical wall on the boundary between columns x-1 and x: thin band (half in each tile) + edge collision. */
 function vwall(x: number, y1: number, y2: number, gaps: number[] = []) {
   for (let y = y1; y <= y2; y++) {
-    if (gaps.includes(y)) {
-      clear(collision, x, y);
-      continue;
-    }
-    if (!walls[y * W + x]) set(walls, x, y, TERRAIN.wallV); // horizontal wall faces win at junctions
-    block(x, y);
+    if (gaps.includes(y)) continue;
+    if (x - 1 >= 0 && !walls[y * W + x - 1]) set(walls, x - 1, y, TERRAIN.bandRight);
+    if (x < W && !walls[y * W + x]) set(walls, x, y, TERRAIN.bandLeft);
+    if (x < W) set(edges, x, y, TERRAIN.edgeW);
   }
 }
-hwall(0, 0, W - 1, [], [3, 4, 8, 11, 12, 15, 24, 28]); // back wall of office + kitchen (with windows)
-hwall(16, 1, 19, [4, 5, 14, 15]); // office | lounge + meeting (doors)
-hwall(12, 21, W - 2, []); // kitchen | library
-for (let y = 2; y < H; y++) {
-  set(walls, 0, y, TERRAIN.wallLeft);
-  set(walls, W - 1, y, TERRAIN.wallRight);
-  clear(ground, 0, y);
-  clear(ground, W - 1, y);
-  block(0, y);
-  block(W - 1, y);
+hwall(1, 0, W - 1, [], [3, 4, 8, 11, 12, 15, 24, 28]); // back wall (office + kitchen)
+hwall(17, 0, 19, [4, 5, 14, 15]); // back wall of lounge + meeting room (doors to the office)
+hwall(13, 20, W - 1); // back wall of the library
+vwall(20, 3, H - 1, [7, 8, 15, 21, 22]); // office | kitchen+library (doors)
+vwall(10, 19, H - 1, [22, 23]); // lounge | meeting room
+for (let y = 3; y < H; y++) {
+  if (!walls[y * W]) set(walls, 0, y, TERRAIN.bandLeft); // outer walls
+  if (!walls[y * W + W - 1]) set(walls, W - 1, y, TERRAIN.bandRight);
 }
-vwall(20, 2, H - 1, [7, 8, 15, 21, 22]); // doors: office↔kitchen, office↔library, meeting↔library
-vwall(10, 18, H - 1, [22, 23]); // lounge | meeting
+for (let x = 0; x < W; x++) set(walls, x, H - 1, TERRAIN.bandBottom);
 for (let x = 0; x < W; x++) {
-  set(walls, x, H - 1, TERRAIN.wallBottom);
-  clear(ground, x, H - 1);
-  block(x, H - 1);
+  clear(ground, x, 0);
+  block(x, 0);
 }
-// outside the building (above the back wall): no floor
-for (let y = 0; y < 2; y++)
-  for (let x = 0; x < W; x++) {
-    clear(ground, x, y);
-    block(x, y);
-  }
 
 // ── props ──
 const lib: { props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number; layer?: string }[] } = {
@@ -217,13 +203,14 @@ const map: TiledMap & Record<string, unknown> = {
   tilewidth: T,
   tileheight: T,
   infinite: false,
-  nextlayerid: 9,
+  nextlayerid: 10,
   nextobjectid: nextId,
   layers: [
     tileLayer(1, "ground", ground),
     tileLayer(2, "ground_detail", detail),
     tileLayer(3, "walls", walls),
     tileLayer(4, "collision", collision, false),
+    tileLayer(8, "edges", edges, false),
     { id: 5, name: "objects", type: "objectgroup", objects, visible: true, opacity: 1, draworder: "topdown" } as TiledLayer,
     tileLayer(6, "above", above),
     { id: 7, name: "markers", type: "objectgroup", objects: markers, visible: true, opacity: 1 } as TiledLayer,
@@ -233,6 +220,7 @@ const map: TiledMap & Record<string, unknown> = {
       firstgid: FIRST_TERRAIN, name: "terrain", tilewidth: T, tileheight: T, tilecount: TERRAIN_COUNT,
       columns: TERRAIN_COLUMNS, image: "../tilesets/terrain.png", imagewidth: TERRAIN_COLUMNS * T,
       imageheight: (TERRAIN_COUNT / TERRAIN_COLUMNS) * T, margin: 0, spacing: 0,
+      tiles: [{ id: TERRAIN.edgeW, properties: [{ name: "side", type: "string", value: "W" }] }],
     } as TiledMap["tilesets"][number],
     {
       firstgid: FIRST_FURN, name: "props", tilewidth: 160, tileheight: 160, tilecount: lib.props.length, columns: 0,

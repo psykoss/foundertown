@@ -55,7 +55,7 @@ function tryStart(st: WalkerState, intent: Dir, grid: CollisionGrid, leftoverMs:
   const { dx, dy } = DIR_VEC[intent];
   const nx = st.tileX + dx;
   const ny = st.tileY + dy;
-  if (grid.isBlocked(nx, ny)) return { ...st, dir: intent, moving: false, progress: 0 }; // turn in place
+  if (!grid.canStep(st.tileX, st.tileY, nx, ny)) return { ...st, dir: intent, moving: false, progress: 0 }; // turn in place
   return { ...st, dir: intent, toX: nx, toY: ny, moving: true, progress: leftoverMs / stepMs };
 }
 

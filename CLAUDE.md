@@ -32,7 +32,7 @@ Full spec: `docs/spec.md`. Read it before changing anything in `shared/src/spec.
 - Sheet template: 4 columns × 6 rows (128×384). Rows anim-major: idle_down, idle_up, idle_left, walk_down, walk_up, walk_left. Idle 4 frames, walk 4 (8 fps).
 - Character art: pure black outline, key ramps for recolorable parts (skin = yellow keys, primary = magenta keys, secondary = cyan keys), fixed colors from `FIXED_COLORS`.
 - Palette: extracted from the reference office screenshots (`ENV_RAMPS`/`CLOTH_RAMPS` in `shared/src/palette.ts`): cream brick floors, lavender carpets, grey-green walls, mint gardens, blue fabric, tan wood, amber/coral accents; UI navy + purple. Environment art has **no hard outlines** — flat fills, joints/patterns one shade off, objects get a soft edge in their own darkest shade. Characters keep their black outline.
-- Walls are thin (reference style): a horizontal wall is ONE row (`wallH`/`wallHWindow`: 8px cap on top of the face + baseboard); vertical walls are an 8px band (`wallV`, outer `wallLeft`/`wallRight`); the outer bottom is `wallBottom`. Nothing is drawn outside the building.
+- Walls match the reference perspective: a horizontal wall is the back wall of the room below — a 2-row face (`faceTop` with a thin cap line / `faceTopWindow`, then `faceBottom` with baseboard). Vertical walls are **edge walls**: a thin band split across the tile boundary (`bandRight` | `bandLeft`) plus an invisible edge in the hidden `edges` layer (`edgeW`, tile property `side=W`) → `CollisionGrid.blockEdge`; movement/pathfinding use `canStep()`, so rooms run wall-to-wall with no blocked column.
 - Depth = feet / base y for characters and furniture. Ground layers < 0, `above` layer 2,000,000, debug 3,000,000.
 
 ## Props (furniture) & floors

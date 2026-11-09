@@ -3,11 +3,33 @@ export class CollisionGrid {
   readonly width: number;
   readonly height: number;
   private readonly blocked: Uint8Array;
+  /** Thin walls on tile edges: bit 1 = wall on the WEST edge of the tile, bit 2 = wall on its NORTH edge. */
+  private readonly edges: Uint8Array;
 
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
     this.blocked = new Uint8Array(width * height);
+    this.edges = new Uint8Array(width * height);
+  }
+
+  /** Put a thin wall on the west (between x-1 and x) or north (between y-1 and y) edge of a tile. */
+  blockEdge(x: number, y: number, side: "W" | "N"): void {
+    if (this.inBounds(x, y)) this.edges[y * this.width + x]! |= side === "W" ? 1 : 2;
+  }
+
+  hasEdge(x: number, y: number, side: "W" | "N"): boolean {
+    return this.inBounds(x, y) && (this.edges[y * this.width + x]! & (side === "W" ? 1 : 2)) !== 0;
+  }
+
+  /** Can a walker step from (x,y) to the 4-neighbour (nx,ny)? Checks the target tile and thin walls between. */
+  canStep(x: number, y: number, nx: number, ny: number): boolean {
+    if (this.isBlocked(nx, ny)) return false;
+    if (nx === x + 1) return !this.hasEdge(nx, ny, "W");
+    if (nx === x - 1) return !this.hasEdge(x, y, "W");
+    if (ny === y + 1) return !this.hasEdge(nx, ny, "N");
+    if (ny === y - 1) return !this.hasEdge(x, y, "N");
+    return true;
   }
 
   inBounds(x: number, y: number): boolean {

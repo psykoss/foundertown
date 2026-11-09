@@ -133,6 +133,14 @@ export function parseWorld(map: TiledMap): WorldData {
     if (gid !== 0) grid.setBlocked(i % map.width, Math.floor(i / map.width));
   });
 
+  // Thin walls: tiles in the "edges" layer carry a "side" property (W or N) on their tileset tile.
+  const edgeLayer = map.layers.find((l) => l.name === "edges" && l.type === "tilelayer");
+  edgeLayer?.data?.forEach((gid, i) => {
+    if (!gid) return;
+    const side = prop<string>(tileForGid(map, gid)?.tile?.properties, "side", "");
+    if (side === "W" || side === "N") grid.blockEdge(i % map.width, Math.floor(i / map.width), side);
+  });
+
   const furniture: FurnitureInstance[] = [];
   const spawns: Spawn[] = [];
   const zones: Zone[] = [];

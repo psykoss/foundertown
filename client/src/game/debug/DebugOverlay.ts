@@ -29,6 +29,12 @@ export class DebugOverlay {
     if (debug.collision) {
       g.fillStyle(0xff3355, 0.35);
       for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (grid.isBlocked(x, y)) g.fillRect(x * TILE, y * TILE, TILE, TILE);
+      g.lineStyle(3, 0xff3355, 0.9); // thin edge walls
+      for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) {
+          if (grid.hasEdge(x, y, "W")) g.lineBetween(x * TILE, y * TILE, x * TILE, (y + 1) * TILE);
+          if (grid.hasEdge(x, y, "N")) g.lineBetween(x * TILE, y * TILE, (x + 1) * TILE, y * TILE);
+        }
     }
     if (debug.grid) {
       g.lineStyle(1, 0xffffff, 0.12);

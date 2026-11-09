@@ -4,8 +4,9 @@ export const TERRAIN = {
   wallTop: 8, wallFace: 9, wallWindow: 10, collision: 11, doormat: 12, wallFaceLow: 13, hedge: 14, sand: 15,
   // floor textures from the prop library (art/props/floors)
   floorYellow: 16,
-  // thin walls: horizontal = 1 row (8px cap on top of the face), vertical = 8px band down the tile center
-  wallH: 17, wallHWindow: 18, wallV: 19, wallBottom: 20, wallLeft: 21, wallRight: 22,
+  // reference-style walls: horizontal = 2-row face with a thin cap line; vertical = thin band split across the
+  // tile boundary (half in each tile) + an invisible edge wall (no blocked column, no gap)
+  faceTop: 17, faceTopWindow: 18, faceBottom: 19, bandLeft: 20, bandRight: 21, bandBottom: 22, edgeW: 23,
 } as const;
 export const TERRAIN_COLUMNS = 8;
 export const TERRAIN_COUNT = 24;

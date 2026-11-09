@@ -738,36 +738,40 @@ function terrainTileset(): Canvas {
     c.fill(ox + 6, oy + 18, 9, 8, E.water![2]!); c.fill(ox + 17, oy + 18, 9, 8, E.water![2]!);
     c.fill(ox + 7, oy + 8, 3, 1, E.paper![3]!);
   }
-  // ── thin walls ──
-  const CAP = 8;
-  const thinFace = (id: number, window: boolean) => {
-    const { ox, oy } = at(id);
+  // ── reference-style walls ──
+  {
     const r = E.wallFace!, t = E.wallTop!;
-    c.fill(ox, oy, TILE, CAP, t[2]!); c.fill(ox, oy + 2, TILE, 1, t[3]!); c.fill(ox, oy + CAP - 1, TILE, 1, t[1]!); // cap
-    c.fill(ox, oy + CAP, TILE, TILE - CAP, r[1]!); c.fill(ox, oy + CAP, TILE, 2, r[2]!);                         // face
-    c.fill(ox, oy + TILE - 4, TILE, 3, E.wood![3]!); c.fill(ox, oy + TILE - 1, TILE, 1, E.wood![2]!);            // baseboard
-    if (window) {
-      c.fill(ox + 6, oy + CAP + 3, 20, 13, E.dark![1]!);
-      c.fill(ox + 8, oy + CAP + 5, 7, 9, E.water![3]!); c.fill(ox + 17, oy + CAP + 5, 7, 9, E.water![3]!);
-      c.fill(ox + 9, oy + CAP + 6, 2, 1, E.paper![3]!);
-    }
-  };
-  thinFace(TERRAIN.wallH, false);
-  thinFace(TERRAIN.wallHWindow, true);
-  {
-    const { ox, oy } = at(TERRAIN.wallV);
-    const t = E.wallTop!;
-    c.fill(ox + 12, oy, CAP, TILE, t[2]!); c.fill(ox + 14, oy, 1, TILE, t[3]!); c.fill(ox + 19, oy, 1, TILE, t[1]!);
-  }
-  for (const [id, x0] of [[TERRAIN.wallLeft, TILE - CAP], [TERRAIN.wallRight, 0]] as const) {
-    const { ox, oy } = at(id); // outer walls hug the building edge
-    const t = E.wallTop!;
-    c.fill(ox + x0, oy, CAP, TILE, t[2]!); c.fill(ox + x0 + 2, oy, 1, TILE, t[3]!); c.fill(ox + x0 + CAP - 1, oy, 1, TILE, t[1]!);
-  }
-  {
-    const { ox, oy } = at(TERRAIN.wallBottom);
-    const t = E.wallTop!;
-    c.fill(ox, oy, TILE, CAP, t[2]!); c.fill(ox, oy + 2, TILE, 1, t[3]!); c.fill(ox, oy + CAP - 1, TILE, 1, t[1]!);
+    const face = (id: number, top: boolean, window: boolean) => {
+      const { ox, oy } = at(id);
+      c.fill(ox, oy, TILE, TILE, r[1]!);
+      if (top) {
+        c.fill(ox, oy, TILE, 3, t[3]!); c.fill(ox, oy + 3, TILE, 1, t[1]!); // thin cap line
+        c.fill(ox, oy + 4, TILE, 3, r[2]!);
+      } else {
+        c.fill(ox, oy + TILE - 5, TILE, 4, E.wood![3]!); c.fill(ox, oy + TILE - 1, TILE, 1, E.wood![2]!); // baseboard
+      }
+      if (window) {
+        c.fill(ox + 4, oy + 9, 24, 23, E.dark![1]!);
+        c.fill(ox + 6, oy + 11, 9, 9, E.water![3]!); c.fill(ox + 17, oy + 11, 9, 9, E.water![3]!);
+        c.fill(ox + 6, oy + 22, 9, 10, E.water![2]!); c.fill(ox + 17, oy + 22, 9, 10, E.water![2]!);
+        c.fill(ox + 7, oy + 12, 3, 1, E.paper![3]!);
+      }
+    };
+    face(TERRAIN.faceTop, true, false);
+    face(TERRAIN.faceTopWindow, true, true);
+    face(TERRAIN.faceBottom, false, false);
+    // vertical wall = 4px on each side of the tile boundary
+    const band = (id: number, x0: number, light: number) => {
+      const { ox, oy } = at(id);
+      c.fill(ox + x0, oy, 4, TILE, r[1]!);
+      c.fill(ox + x0 + light, oy, 1, TILE, t[3]!);
+    };
+    band(TERRAIN.bandRight, TILE - 4, 0); // used in the tile LEFT of the boundary (band on its right edge)
+    band(TERRAIN.bandLeft, 0, 3); // used in the tile RIGHT of the boundary (band on its left edge)
+    const { ox, oy } = at(TERRAIN.bandBottom);
+    c.fill(ox, oy + TILE - 5, TILE, 5, r[1]!); c.fill(ox, oy + TILE - 5, TILE, 1, t[3]!);
+    const e = at(TERRAIN.edgeW); // edge-wall marker (Tiled only, layer "edges" is hidden in game)
+    for (let y = 0; y < TILE; y++) c.set(e.ox + 1, e.oy + y, E.coral![2]!, 200);
   }
   // collision marker (Tiled only; hidden in game)
   {
