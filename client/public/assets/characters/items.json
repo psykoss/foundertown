@@ -2,7 +2,7 @@
   "version": 1,
   "items": [
     { "id": "body_01", "slot": "body", "name": "Body", "channels": [],
-      "parts": [{ "layer": "shadow", "sheet": "body/shadow_01.png" }, { "layer": "body", "sheet": "body/body_01.png" }] },
+      "parts": [{ "layer": "shadow", "sheet": "body/shadow_01.png" }, { "layer": "body", "sheet": "body/body_01.png" }, { "layer": "head", "sheet": "body/head_01.png" }] },
     { "id": "face_01", "slot": "face", "name": "Default face", "channels": [],
       "parts": [{ "layer": "face", "sheet": "face/face_01.png" }] },
 

@@ -78,23 +78,26 @@ const hexAt = (c: Canvas, x: number, y: number) => {
 };
 
 /** Split the reference into BODY (skin → key ramp) and FACE (eyes, blush) per direction. */
-function loadBase(): Record<SheetDir, { body: Canvas; face: Canvas }> {
+function loadBase(): Record<SheetDir, { body: Canvas; head: Canvas; face: Canvas }> {
   const strip = Canvas.load(path.join(ROOT, "art/characters/reference/base_body.png"));
-  const out = {} as Record<SheetDir, { body: Canvas; face: Canvas }>;
+  const out = {} as Record<SheetDir, { body: Canvas; head: Canvas; face: Canvas }>;
   (["down", "up", "left"] as SheetDir[]).forEach((dir, i) => {
     const body = new Canvas(FRAME_W, FRAME_H);
+    const head = new Canvas(FRAME_W, FRAME_H);
     const face = new Canvas(FRAME_W, FRAME_H);
     for (let y = 0; y < FRAME_H; y++)
       for (let x = 0; x < FRAME_W; x++) {
         const h = hexAt(strip, i * FRAME_W + x, y);
         if (!h) continue;
         const skin = REF_SKIN.indexOf(h);
-        if (y <= HEAD_BOTTOM[dir] && FACE_COLORS.has(h)) {
+        const isHead = y <= HEAD_BOTTOM[dir];
+        const target = isHead ? head : body;
+        if (isHead && FACE_COLORS.has(h)) {
           face.set(x, y, h);
-          body.set(x, y, KEY_RAMPS.skin[3]);
-        } else body.set(x, y, skin >= 0 ? KEY_RAMPS.skin[skin]! : h);
+          head.set(x, y, KEY_RAMPS.skin[3]);
+        } else target.set(x, y, skin >= 0 ? KEY_RAMPS.skin[skin]! : h);
       }
-    out[dir] = { body, face };
+    out[dir] = { body, head, face };
   });
   return out;
 }
@@ -135,7 +138,7 @@ const BASE = loadBase();
 
 /** Head silhouette (from the reference body) for a pose, shifted with the head bob. */
 function headMask(p: Pose): Uint8Array {
-  const src = BASE[p.dir].body;
+  const src = BASE[p.dir].head;
   const m = new Uint8Array(FRAME_W * FRAME_H);
   for (let y = 0; y <= HEAD_BOTTOM[p.dir]; y++)
     for (let x = 0; x < FRAME_W; x++) {
@@ -166,6 +169,7 @@ const drawers: Record<string, Drawer> = {
       }
   },
   "body/body_01.png": (f) => animate(BASE[f.dir].body, f.p, f.c),
+  "body/head_01.png": (f) => animate(BASE[f.dir].head, f.p, f.c),
   "face/face_01.png": (f) => animate(BASE[f.dir].face, f.p, f.c),
 
   // ── hair ──

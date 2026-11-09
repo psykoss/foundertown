@@ -34,8 +34,8 @@ Frame update order: input → logic → render → debug → HUD (4 Hz).
 - Motion model (`scripts/lib/pose.ts`): head and upper body never move (a bobbing head reads as sinking into the torso at this size). Idle is static; walk animates legs only — lift 2/1 px alternately (front/back) or stride ±1/2 px (side).
 
 ### Layers (back → front, facing down/left)
-`shadow, back_accessory, hair_back, body, face, bottom, shoes, top, outerwear, hair_front, headwear, face_accessory, hand_item`
-Facing up: face goes behind the body; hair_back and back_accessory move in front. See `LAYER_ORDER`.
+`shadow, back_accessory, hair_back, body, bottom, shoes, top, outerwear, head, face, hair_front, headwear, face_accessory, hand_item`
+The head is its own layer, drawn **over clothing** so it overlaps the shoulders (clothing must never cover the chin). Facing up: hair_back and back_accessory move in front. See `LAYER_ORDER`.
 
 ### Slots → items
 `body, face, hair, top, outerwear*, bottom, shoes, headwear*, face_accessory*, back_accessory*` (* optional).
