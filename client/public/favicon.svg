@@ -1,10 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Founder Town mark: black mixed-fruit tanghulu on a bright orange tile (same art as Logo in src/ui/Shell.tsx) -->
+  <!-- Founder Town mark: pixel-art isometric block with a flag on its roof, on an orange tile (same art as Logo in client/src/ui/Shell.tsx) -->
   <rect width="32" height="32" rx="8" fill="#ff7a1a"/>
-  <g transform="translate(3 3) scale(1.0833) rotate(38 12 12)" fill="#111111">
-    <path d="M12 0.6v23.2" stroke="#111111" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-    <path d="M12 1.6c2.3 1.3 3.6 3.4 3.4 4.9-.2 1.3-1.7 1.6-3.4 1.6s-3.2-.3-3.4-1.6C8.4 5 9.7 2.9 12 1.6z"/>
-    <circle cx="12" cy="11.6" r="3.5"/>
-    <circle cx="12" cy="18.3" r="3.1"/>
+  <g transform="translate(4 4.5) scale(1.5)" fill="#111111" shape-rendering="crispEdges">
+    <rect x="7" y="0" width="4" height="1"/>
+    <rect x="7" y="1" width="6" height="1"/>
+    <rect x="7" y="2" width="4" height="1"/>
+    <rect x="7" y="3" width="1" height="1"/>
+    <rect x="6" y="4" width="1" height="1" fill-opacity="0.42"/>
+    <rect x="7" y="4" width="1" height="1"/>
+    <rect x="8" y="4" width="2" height="1" fill-opacity="0.42"/>
+    <rect x="4" y="5" width="8" height="1" fill-opacity="0.42"/>
+    <rect x="2" y="6" width="12" height="1" fill-opacity="0.42"/>
+    <rect x="2" y="7" width="2" height="1"/>
+    <rect x="4" y="7" width="8" height="1" fill-opacity="0.42"/>
+    <rect x="12" y="7" width="2" height="1" fill-opacity="0.7"/>
+    <rect x="2" y="8" width="4" height="1"/>
+    <rect x="6" y="8" width="4" height="1" fill-opacity="0.42"/>
+    <rect x="10" y="8" width="4" height="1" fill-opacity="0.7"/>
+    <rect x="2" y="9" width="6" height="1"/>
+    <rect x="8" y="9" width="6" height="1" fill-opacity="0.7"/>
+    <rect x="2" y="10" width="2" height="1"/>
+    <rect x="6" y="10" width="2" height="1"/>
+    <rect x="8" y="10" width="2" height="1" fill-opacity="0.7"/>
+    <rect x="12" y="10" width="2" height="1" fill-opacity="0.7"/>
+    <rect x="2" y="11" width="2" height="1"/>
+    <rect x="6" y="11" width="2" height="1"/>
+    <rect x="8" y="11" width="2" height="1" fill-opacity="0.7"/>
+    <rect x="12" y="11" width="2" height="1" fill-opacity="0.7"/>
+    <rect x="2" y="12" width="2" height="1"/>
+    <rect x="6" y="12" width="2" height="1"/>
+    <rect x="8" y="12" width="6" height="1" fill-opacity="0.7"/>
+    <rect x="4" y="13" width="4" height="1"/>
+    <rect x="8" y="13" width="4" height="1" fill-opacity="0.7"/>
+    <rect x="6" y="14" width="2" height="1"/>
+    <rect x="8" y="14" width="2" height="1" fill-opacity="0.7"/>
   </g>
 </svg>

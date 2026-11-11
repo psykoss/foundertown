@@ -3,5 +3,19 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Multiplayer server (Colyseus). Not started yet — see docs/spec.md §Roadmap."
+  "description": "Multiplayer server (Colyseus): lobbies, validated movement, voice/video signaling, invite emails.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "NODE_ENV=production tsx src/index.ts"
+  },
+  "dependencies": {
+    "@colyseus/schema": "^5.0.47",
+    "@ft/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.119.0",
+    "colyseus": "^0.18.12",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
 }

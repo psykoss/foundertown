@@ -1,13 +1,18 @@
 /**
  * The world: map + characters + camera + input + debug.
  * Update order each frame: input → logic (Character.update) → render (CharacterView.update).
+ *
+ * Multiplayer: the player moves locally at once (prediction) and reports each step; the server
+ * validates it and may send the player back (`snap`). Everyone else is a Character walking toward
+ * the tile the server last reported for them (`store.players`).
  */
 import Phaser from "phaser";
 import {
-  TILE, findPath, parseWorld, randomAvatar, rng, sanitizeAvatar,
+  TILE, findPath, parseWorld, sanitizeAvatar,
   type ItemRegistry, type TiledMap, type WorldData,
 } from "@ft/shared";
-import { store } from "../../state/store";
+import { sendMove } from "../../net/room";
+import { store, type RemotePlayer } from "../../state/store";
 import { Character } from "../entities/Character";
 import { CharacterView } from "../entities/CharacterView";
 import { InputController } from "../input/InputController";
@@ -16,29 +21,35 @@ import { TileCursor } from "../render/TileCursor";
 import { DebugOverlay } from "../debug/DebugOverlay";
 import { WorldView, DEPTH_ABOVE } from "../world/WorldView";
 
-const NPC_NAMES = ["Lucía", "Wei", "Amara", "Jonas", "Priya", "Mateo", "Sofia", "Kenji"];
+/** A remote player further than this from where we last drew them is moved at once instead of walked. */
+const WALK_RANGE = 10;
+/** Remote players that fell behind their reported position walk this much faster until they catch up. */
+const CATCH_UP = 1.5;
 
-interface Npc {
+interface Remote {
   view: CharacterView;
-  waitMs: number;
+  /** The store snapshot this view was last synced to. */
+  data: RemotePlayer;
 }
 
 export class WorldScene extends Phaser.Scene {
   private world!: WorldData;
   private player!: CharacterView;
-  private npcs: Npc[] = [];
+  private items!: ItemRegistry;
+  private remotes = new Map<string, Remote>();
+  /** Last position reported to the server. */
+  private sent = { x: -1, y: -1, dir: "" };
   private input_!: InputController;
   private debug!: DebugOverlay;
   private cursor!: TileCursor;
   private hudTimer = 0;
-  private rand = rng(7);
 
   constructor() {
     super("World");
   }
 
   create() {
-    const registry = store.get().registry as ItemRegistry;
+    const registry = (this.items = store.get().registry as ItemRegistry);
     const raw = this.cache.tilemap.get("town").data as TiledMap;
     this.world = parseWorld(raw);
     const view = new WorldView(this, "town", raw, this.world);
@@ -47,13 +58,6 @@ export class WorldScene extends Phaser.Scene {
     const avatar = sanitizeAvatar(store.get().avatar, registry);
     const me = new Character("me", store.get().playerName, avatar, spawn.tileX, spawn.tileY);
     this.player = new CharacterView(this, me, registry);
-
-    // NPCs stand in for remote players until multiplayer exists.
-    NPC_NAMES.forEach((name, i) => {
-      const tile = this.randomFreeTile();
-      const c = new Character(`npc${i}`, name, randomAvatar(registry, this.rand), tile.x, tile.y);
-      this.npcs.push({ view: new CharacterView(this, c, registry), waitMs: this.rand() * 3000 });
-    });
 
     this.input_ = new InputController(this);
     this.debug = new DebugOverlay(this, this.world);
@@ -83,6 +87,16 @@ export class WorldScene extends Phaser.Scene {
     });
     store.watch((s) => s.playerName, (n) => (me.name = n));
     store.watch((s) => s.modal, (m) => (this.input_.enabled = !m));
+    store.watch((s) => s.speaking, (on) => this.player.label.setSpeaking(on));
+
+    // Net → world bindings
+    store.watch((s) => s.snap, ({ x, y }) => {
+      me.teleport(x, y);
+      this.sent = { x, y, dir: "" }; // the tile is the server's; the facing still has to be reported
+    });
+    store.watch((s) => s.players, () => this.syncRemotes());
+    store.watch((s) => s.selfId, () => this.syncRemotes());
+    this.syncRemotes();
 
     store.set({ ready: true });
     void DEPTH_ABOVE;
@@ -107,12 +121,22 @@ export class WorldScene extends Phaser.Scene {
 
     // logic
     me.update(dt, this.input_.direction, this.world.grid);
-    for (const npc of this.npcs) this.updateNpc(npc, dt);
+    const at = me.tile;
+    const dir = me.walker.dir;
+    if (at.x !== this.sent.x || at.y !== this.sent.y || dir !== this.sent.dir) {
+      this.sent = { x: at.x, y: at.y, dir };
+      sendMove({ x: at.x, y: at.y, dir });
+    }
+    for (const { view, data } of this.remotes.values()) {
+      const c = view.character;
+      c.update(c.path.length > 2 ? dt * CATCH_UP : dt, null, this.world.grid);
+      c.face(data.dir);
+    }
 
     // render
     this.player.update();
-    for (const npc of this.npcs) npc.view.update();
-    this.debug.update([this.player.feet(), ...this.npcs.map((n) => n.view.feet())]);
+    for (const { view } of this.remotes.values()) view.update();
+    this.debug.update([this.player.feet(), ...[...this.remotes.values()].map((r) => r.view.feet())]);
 
     // HUD (4 Hz)
     this.hudTimer += delta;
@@ -126,31 +150,39 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private updateNpc(npc: Npc, dt: number) {
-    const c = npc.view.character;
-    if (!c.path.length && !c.walker.moving) {
-      npc.waitMs -= dt;
-      if (npc.waitMs <= 0) {
-        npc.waitMs = 1500 + this.rand() * 4000;
-        const t = c.tile;
-        for (let tries = 0; tries < 10; tries++) {
-          const goal = { x: t.x + Math.floor(this.rand() * 13) - 6, y: t.y + Math.floor(this.rand() * 13) - 6 };
-          const path = findPath(this.world.grid, t, goal, 800);
-          if (path && path.length) {
-            c.setPath(path);
-            break;
-          }
-        }
-      }
+  /** Bring the remote characters in line with `store.players`: add, remove, retarget, restyle. */
+  private syncRemotes() {
+    const { players, selfId } = store.get();
+    for (const [id, r] of this.remotes) {
+      if (players[id] && id !== selfId) continue;
+      r.view.destroy();
+      this.remotes.delete(id);
     }
-    c.update(dt, null, this.world.grid);
-  }
-
-  private randomFreeTile() {
-    for (;;) {
-      const x = 2 + Math.floor(this.rand() * (this.world.width - 4));
-      const y = 15 + Math.floor(this.rand() * (this.world.height - 17));
-      if (!this.world.grid.isBlocked(x, y)) return { x, y };
+    for (const p of Object.values(players)) {
+      if (p.id === selfId) continue;
+      let r = this.remotes.get(p.id);
+      if (!r) {
+        const c = new Character(p.id, p.name, sanitizeAvatar(p.avatar, this.items), p.x, p.y, p.dir);
+        const view = new CharacterView(this, c, this.items);
+        view.onClick(() => store.set({ popover: "player", selected: p.id }));
+        this.remotes.set(p.id, (r = { view, data: p }));
+      } else if (r.data !== p) {
+        const c = r.view.character;
+        c.name = p.name;
+        if (p.avatar !== r.data.avatar) {
+          c.avatar = sanitizeAvatar(p.avatar, this.items);
+          r.view.refreshAvatar();
+        }
+        if (p.x !== r.data.x || p.y !== r.data.y) {
+          const from = c.tile;
+          const near = Math.abs(p.x - from.x) + Math.abs(p.y - from.y) <= WALK_RANGE;
+          const path = near ? findPath(this.world.grid, from, p, 500) : null;
+          if (path) c.setPath(path);
+          else c.teleport(p.x, p.y, p.dir);
+        }
+        r.data = p;
+      }
+      r.view.label.setSpeaking(p.speaking);
     }
   }
 }

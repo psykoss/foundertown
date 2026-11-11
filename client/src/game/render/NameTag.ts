@@ -34,6 +34,7 @@ export class NameTag {
     this.el.className = "nametag";
     const dot = document.createElement("span");
     dot.className = "nametag-dot";
+    dot.append(document.createElement("i"), document.createElement("i"), document.createElement("i")); // sound bars, shown while speaking
     this.textEl = document.createElement("span");
     this.el.append(dot, this.textEl);
     this.setName(name);
@@ -48,6 +49,11 @@ export class NameTag {
     if (name === this.name) return;
     this.name = name;
     this.textEl.textContent = name;
+  }
+
+  /** Swap the status dot for moving sound bars while the character is talking. */
+  setSpeaking(on: boolean) {
+    this.el.classList.toggle("speaking", on);
   }
 
   /** Make the tag clickable (e.g. the player's own tag opens their profile). */

@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@colyseus/sdk": "^0.18.10",
     "@ft/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.119.0",
     "lucide-react": "^1.70.0",
     "phaser": "^3.87.0",
     "react": "^18.3.1",

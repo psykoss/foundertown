@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  /* the only two accents: Y Combinator orange and black */
+  --color-yc: #ff6600;
+  --color-ink: #000000;
+  --font-helvetica: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body { margin: 0; overflow: hidden; background: #ff6600; }

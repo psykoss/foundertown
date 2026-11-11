@@ -89,4 +89,5 @@ Replacing art = drop a PNG with the same path and template → no code changes.
 5. ✅ Layer compositor + palette swap
 6. ✅ Character builder
 7. ⏳ Real art pass (Aseprite): body anims, clothing, tilesets → `assets:export`
-8. Next phases: Colyseus server (shared movement), proximity + chat, rooms/portals, founder pills, persistence
+8. ✅ Accounts + onboarding (Supabase), Colyseus lobbies with validated movement, proximity voice + video calls, invites
+9. Next phases: chat, rooms/portals, founder pills

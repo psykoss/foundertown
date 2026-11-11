@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter client dev",
+    "dev": "pnpm --parallel --filter client --filter @ft/server dev",
     "build": "pnpm assets && pnpm --filter client build",
     "assets": "pnpm assets:placeholders && pnpm assets:map && pnpm assets:validate",
     "assets:placeholders": "tsx scripts/gen-placeholders.ts",
@@ -11,7 +11,12 @@
     "assets:validate": "tsx scripts/validate-assets.ts",
     "assets:export": "bash scripts/export-aseprite.sh",
     "test": "vitest run",
-    "typecheck": "tsc -p shared && tsc -p client --noEmit"
+    "typecheck": "tsc -p shared && tsc -p client --noEmit && tsc -p server && tsc -p landing",
+    "dev:client": "pnpm --filter client dev",
+    "dev:server": "pnpm --filter @ft/server dev",
+    "start:server": "pnpm --filter @ft/server start",
+    "dev:landing": "pnpm --filter landing dev",
+    "build:landing": "pnpm --filter landing build"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

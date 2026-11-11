@@ -18,6 +18,7 @@ import {
   sanitizeAvatar,
   parseWorld,
   type TiledMap,
+  sanitizeFounder, sanitizeName, isLobby, voiceVolume, BUILDING_MAX, MAIN_LOBBY, VOICE,
 } from "./index.js";
 
 describe("movement", () => {
@@ -133,5 +134,37 @@ describe("map parsing", () => {
     expect(w.grid.isBlocked(3, 3)).toBe(true);
     expect(w.grid.isBlocked(2, 2)).toBe(false);
     expect(w.spawns[0]).toEqual({ name: "main", tileX: 0, tileY: 1 });
+  });
+});
+
+describe("founder profile", () => {
+  it("drops unknown answers and trims text", () => {
+    const f = sanitizeFounder({ stage: "series_a", building: "  x ".padEnd(200, "y"), goals: ["learn", "nope", "learn"], heard: 7 });
+    expect(f.stage).toBe("series_a");
+    expect(f.building.length).toBe(BUILDING_MAX);
+    expect(f.goals).toEqual(["learn"]);
+    expect(f.heard).toBe("");
+    expect(sanitizeFounder(null)).toEqual({ stage: "", building: "", goals: [], heard: "" });
+  });
+  it("falls back for empty names", () => {
+    expect(sanitizeName("  ")).toBe("Founder");
+    expect(sanitizeName("a".repeat(40)).length).toBe(24);
+  });
+});
+
+describe("protocol", () => {
+  it("accepts the main lobby and well-formed codes only", () => {
+    expect(isLobby(MAIN_LOBBY)).toBe(true);
+    expect(isLobby("a1b2c3d4e5f6")).toBe(true);
+    expect(isLobby("short")).toBe(false);
+    expect(isLobby("../etc/passwd")).toBe(false);
+    expect(isLobby(undefined)).toBe(false);
+  });
+  it("fades voice with distance", () => {
+    expect(voiceVolume(0)).toBe(1);
+    expect(voiceVolume(VOICE.full)).toBe(1);
+    expect(voiceVolume(VOICE.silent)).toBe(0);
+    expect(voiceVolume((VOICE.full + VOICE.silent) / 2)).toBeCloseTo(0.5);
+    expect(VOICE.disconnect).toBeGreaterThan(VOICE.connect);
   });
 });

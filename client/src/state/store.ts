@@ -3,7 +3,7 @@
  * Phaser rendering never owns game state (see CLAUDE.md §Rules).
  */
 import { useSyncExternalStore } from "react";
-import { DEFAULT_AVATAR, type Avatar, type ItemRegistry } from "@ft/shared";
+import { DEFAULT_AVATAR, MAIN_LOBBY, type Avatar, type Dir, type FounderProfile, type ItemRegistry } from "@ft/shared";
 
 export interface DebugFlags {
   grid: boolean;
@@ -32,8 +32,46 @@ export interface Minimap {
 }
 
 /** Small anchored panels (one at a time) and blocking dialogs. */
-export type Popover = "menu" | "profile";
-export type Modal = "editProfile" | "editAvatar";
+export type Popover = "menu" | "profile" | "player";
+export type Modal = "editProfile" | "editAvatar" | "invite" | "founder";
+
+/** Where the account is in its life cycle; the game starts at "ready". */
+export interface Session {
+  status: "loading" | "signedOut" | "recovery" | "onboarding" | "ready";
+  userId: string | null;
+  email: string | null;
+}
+
+/** Connection to the multiplayer room. */
+export interface Net {
+  status: "offline" | "connecting" | "online";
+  /** Lobby code we are in or joining. */
+  lobby: string;
+  /** Display name of the lobby, from the server. */
+  title: string;
+}
+
+/** Someone in the room (including yourself), as synced by the server. */
+export interface RemotePlayer {
+  id: string;
+  name: string;
+  avatar: Avatar;
+  stage: string;
+  building: string;
+  goals: string[];
+  x: number;
+  y: number;
+  dir: Dir;
+  speaking: boolean;
+  cam: boolean;
+}
+
+/** Video calls: `peers` are connected at any distance; one invite can be pending each way. */
+export interface Calls {
+  peers: string[];
+  incoming: string | null;
+  outgoing: string | null;
+}
 
 export interface AppState {
   ready: boolean;
@@ -44,7 +82,29 @@ export interface AppState {
   timeZone: string;
   /** Profile picture as a data URL (null = initial on a colored circle). */
   picture: string | null;
+  session: Session;
+  /** Onboarding answers (null until answered). */
+  founder: FounderProfile | null;
+  /** Code of your own private lobby. */
+  myLobby: string;
+  net: Net;
+  /** Everyone in the room by session id; `selfId` is you. */
+  players: Record<string, RemotePlayer>;
+  selfId: string | null;
+  /** Net → world intent: bump `n` to put the player on a tile (join, rejected move). */
+  snap: { n: number; x: number; y: number };
+  mic: boolean;
+  cam: boolean;
+  speaking: boolean;
+  calls: Calls;
+  /** Your camera, and the video of each connected peer (shown while their `cam` flag is on). */
+  localVideo: MediaStream | null;
+  videos: Record<string, MediaStream>;
+  /** One-line message shown briefly at the top of the frame. */
+  notice: string | null;
   popover: Popover | null;
+  /** Player the "player" popover is about. */
+  selected: string | null;
   modal: Modal | null;
   /** Where "Edit Avatar" returns to when closed. */
   avatarReturn: Modal | null;
@@ -138,7 +198,22 @@ export const store = createStore<AppState>({
   playerName: profile.name,
   timeZone: profile.timeZone,
   picture: profile.picture,
+  session: { status: "loading", userId: null, email: null },
+  founder: null,
+  myLobby: "",
+  net: { status: "offline", lobby: MAIN_LOBBY, title: "" },
+  players: {},
+  selfId: null,
+  snap: { n: 0, x: 0, y: 0 },
+  mic: false,
+  cam: false,
+  speaking: false,
+  calls: { peers: [], incoming: null, outgoing: null },
+  localVideo: null,
+  videos: {},
+  notice: null,
   popover: null,
+  selected: null,
   modal: null,
   avatarReturn: null,
   sidebarOpen: true,

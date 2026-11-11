@@ -31,6 +31,17 @@ export class Character {
     this.path = path;
   }
 
+  /** Stand on a tile right now (spawn, server correction, a remote player too far away to walk). */
+  teleport(tileX: number, tileY: number, dir: Dir = this.walker.dir) {
+    this.path = [];
+    this.walker = createWalker(tileX, tileY, dir);
+  }
+
+  /** Turn on the spot — only while standing still. */
+  face(dir: Dir) {
+    if (!this.walker.moving && !this.path.length && this.walker.dir !== dir) this.walker = { ...this.walker, dir };
+  }
+
   /** `keyIntent` (direct control) always overrides path following. */
   update(dtMs: number, keyIntent: Dir | null, grid: CollisionGrid) {
     let intent: Dir | null = keyIntent;

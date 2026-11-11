@@ -3,6 +3,9 @@ import { store, useStore } from "../state/store";
 import { BottomBar, LogoMenu, MapControls, ProfileCard, Sidebar, SidebarToggle } from "./Shell";
 import { EditProfile } from "./EditProfile";
 import { EditAvatar } from "./EditAvatar";
+import { AuthScreen } from "./Auth";
+import { Onboarding } from "./Onboarding";
+import { CallLayer, InviteDialog, LobbyChip, Notice, PlayerCard } from "./Social";
 
 /** Matches `--t-open` in styles.css. */
 const EXIT_MS = 200;
@@ -21,6 +24,7 @@ function Presence({ show, children }: { show: boolean; children: ReactNode }) {
 
 export function App() {
   const ready = useStore((s) => s.ready);
+  const status = useStore((s) => s.session.status);
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const popover = useStore((s) => s.popover);
   const modal = useStore((s) => s.modal);
@@ -46,6 +50,17 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Before the game: sign in, then the founder questions.
+  if (status !== "ready")
+    return (
+      <>
+        {status === "loading" && <div className="screen"><div className="loading">Loading Founder Town…</div></div>}
+        {(status === "signedOut" || status === "recovery") && <AuthScreen />}
+        {status === "onboarding" && <Onboarding />}
+        <Notice />
+      </>
+    );
+
   return (
     <>
       {/* always mounted: it slides out via body.no-sidebar instead of popping */}
@@ -57,6 +72,7 @@ export function App() {
           <>
             <div className="frame-top">
               <SidebarToggle />
+              <LobbyChip />
               {hud.zone && <span className="zone-chip">{hud.zone.replace("_", " ")}</span>}
             </div>
             {anyDebug && (
@@ -67,6 +83,7 @@ export function App() {
                 <div className="muted">F1 grid · F2 collision · F3 depth</div>
               </div>
             )}
+            <CallLayer />
             <MapControls />
             <BottomBar />
           </>
@@ -76,10 +93,14 @@ export function App() {
       {popover && <div className="popover-catch" onMouseDown={() => store.set({ popover: null })} />}
       <Presence show={popover === "menu"}><LogoMenu /></Presence>
       <Presence show={popover === "profile"}><ProfileCard /></Presence>
+      <Presence show={popover === "player"}><PlayerCard /></Presence>
 
       {/* stays mounted under Edit Avatar so unsaved name/time-zone edits survive the round trip */}
       <Presence show={modal === "editProfile" || (modal === "editAvatar" && avatarReturn === "editProfile")}><EditProfile /></Presence>
       <Presence show={modal === "editAvatar"}><EditAvatar /></Presence>
+      <Presence show={modal === "invite"}><InviteDialog /></Presence>
+      <Presence show={modal === "founder"}><Onboarding edit /></Presence>
+      <Notice />
     </>
   );
 }

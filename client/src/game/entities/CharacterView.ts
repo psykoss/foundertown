@@ -9,6 +9,8 @@ import { NameTag } from "../render/NameTag";
 
 /** Feet sit this many px above the bottom edge of their tile. */
 const FEET_INSET = 3;
+/** Clickable part of a frame: the drawn body, not the empty margin around it. */
+const BODY = new Phaser.Geom.Rectangle(6, 24, 20, 40);
 
 export class CharacterView {
   readonly sprite: Phaser.GameObjects.Sprite;
@@ -37,6 +39,12 @@ export class CharacterView {
       this.sprite.setTexture(tex).setVisible(true);
       this.sprite.anims.stop();
     });
+  }
+
+  /** Make the character clickable — its body and its name tag. */
+  onClick(cb: () => void) {
+    this.label.onClick(cb);
+    this.sprite.setInteractive({ hitArea: BODY, hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true }).on("pointerdown", cb);
   }
 
   /** Feet position in world pixels. */

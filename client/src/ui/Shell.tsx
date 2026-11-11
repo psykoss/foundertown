@@ -4,30 +4,59 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Bell, Calendar, ChevronDown, ChevronUp, CircleHelp, Clock, Code, CreditCard, DoorOpen, Download, Ellipsis, EllipsisVertical,
-  Gift, Hammer, LampDesk, LogOut, Map as MapIcon, MessagesSquare, Mic, MicOff, Minus, Music, Navigation, PanelLeft, Plus,
+  Bell, Calendar, ChevronDown, ChevronUp, CircleHelp, Clock, CreditCard, DoorOpen, Download, Ellipsis, EllipsisVertical,
+  Gift, Hammer, House, LampDesk, LogOut, Map as MapIcon, MessagesSquare, Mic, MicOff, Minus, Navigation, PanelLeft, Pencil, Plus,
   Search, Settings, Smile, Sprout, SquareDashed, SquarePen, User, UserPlus, Video, VideoOff, X,
 } from "lucide-react";
+import { GOALS, MAIN_LOBBY, STAGES, optionLabel } from "@ft/shared";
+import { joinLobby } from "../net/room";
+import { authEnabled, signOut } from "../net/session";
+import { setCam, setMic } from "../net/voice";
 import { store, useStore } from "../state/store";
 
 const ICON = { size: 20, strokeWidth: 1.75 } as const;
 
 /**
- * Founder Town mark: a mixed-fruit tanghulu — strawberry, citrus slice and a hawthorn berry on a skewer.
- * Solid silhouettes in the current color — no inner detail.
+ * Founder Town mark, as pixel art on a 16×16 grid: an isometric block — the first building of a
+ * town — with a flag planted on its roof. One color; the faces are told apart by opacity
+ * ("#" full: left wall, flag · "r" right wall · "t" roof), the doorway and the window are left empty.
  */
+const LOGO_ART = [
+  ".......####.....",
+  ".......######...",
+  ".......####.....",
+  ".......#........",
+  "......t#tt......",
+  "....tttttttt....",
+  "..tttttttttttt..",
+  "..##ttttttttrr..",
+  "..####ttttrrrr..",
+  "..######rrrrrr..",
+  "..##..##rr..rr..",
+  "..##..##rr..rr..",
+  "..##..##rrrrrr..",
+  "....####rrrr....",
+  "......##rr......",
+  "................",
+];
+const LOGO_OPACITY: Record<string, number> = { "#": 1, r: 0.7, t: 0.42 };
+/** One rect per horizontal run of the same shade. */
+const LOGO_RECTS = LOGO_ART.flatMap((row, y) => {
+  const out: { x: number; y: number; w: number; o: number }[] = [];
+  for (let x = 0; x < row.length; ) {
+    let end = x + 1;
+    while (row[end] === row[x]) end++;
+    const o = LOGO_OPACITY[row[x]!];
+    if (o) out.push({ x, y, w: end - x, o });
+    x = end;
+  }
+  return out;
+});
+
 export function Logo({ size = 38 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <g transform="rotate(38 12 12)">
-        <path d="M12 0.6v23.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        {/* strawberry, tip toward the point of the skewer */}
-        <path fill="currentColor" d="M12 1.6c2.3 1.3 3.6 3.4 3.4 4.9-.2 1.3-1.7 1.6-3.4 1.6s-3.2-.3-3.4-1.6C8.4 5 9.7 2.9 12 1.6z" />
-        {/* citrus slice */}
-        <circle cx="12" cy="11.6" r="3.5" fill="currentColor" />
-        {/* hawthorn berry */}
-        <circle cx="12" cy="18.3" r="3.1" fill="currentColor" />
-      </g>
+    <svg width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden>
+      {LOGO_RECTS.map((r, i) => <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill="currentColor" fillOpacity={r.o} />)}
     </svg>
   );
 }
@@ -82,9 +111,9 @@ export function Sidebar() {
   );
 }
 
-function MenuItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+function MenuItem({ icon, children, onClick }: { icon: ReactNode; children: ReactNode; onClick?: () => void }) {
   return (
-    <button className="menu-item" role="menuitem" onClick={() => store.set({ popover: null })}>
+    <button className="menu-item" role="menuitem" onClick={() => (store.set({ popover: null }), onClick?.())}>
       {icon}
       <span>{children}</span>
     </button>
@@ -93,16 +122,19 @@ function MenuItem({ icon, children }: { icon: ReactNode; children: ReactNode }) 
 
 export function LogoMenu() {
   const i = { size: 18, strokeWidth: 1.75 };
+  const lobby = useStore((s) => s.net.lobby);
+  const myLobby = useStore((s) => s.myLobby);
   return (
     <div className="menu" role="menu">
-      <button className="btn primary wide" onClick={() => store.set({ popover: null })}>
-        <UserPlus size={18} strokeWidth={2} /> Invite to office
+      <button className="btn primary wide" onClick={() => store.set({ popover: null, modal: "invite" })}>
+        <UserPlus size={18} strokeWidth={2} /> Invite to lobby
       </button>
       <div className="menu-group">
         <MenuItem icon={<Settings {...i} />}>Settings</MenuItem>
         <MenuItem icon={<SquarePen {...i} />}>Report an issue</MenuItem>
         <MenuItem icon={<CircleHelp {...i} />}>Help docs</MenuItem>
-        <MenuItem icon={<DoorOpen {...i} />}>Go to lobby</MenuItem>
+        {lobby !== MAIN_LOBBY && <MenuItem icon={<DoorOpen {...i} />} onClick={() => void joinLobby(MAIN_LOBBY)}>Go to main lobby</MenuItem>}
+        {lobby !== myLobby && <MenuItem icon={<House {...i} />} onClick={() => void joinLobby(myLobby)}>Go to my lobby</MenuItem>}
         <MenuItem icon={<Sprout {...i} />}>Decorate desk</MenuItem>
       </div>
       <div className="menu-group">
@@ -114,10 +146,11 @@ export function LogoMenu() {
       <div className="menu-group">
         <MenuItem icon={<Download {...i} />}>Download desktop app</MenuItem>
       </div>
-      <div className="menu-group">
-        <MenuItem icon={<DoorOpen {...i} />}>Leave office</MenuItem>
-        <MenuItem icon={<LogOut {...i} />}>Sign out</MenuItem>
-      </div>
+      {authEnabled && (
+        <div className="menu-group">
+          <MenuItem icon={<LogOut {...i} />} onClick={() => void signOut()}>Sign out</MenuItem>
+        </div>
+      )}
     </div>
   );
 }
@@ -145,7 +178,7 @@ export function ProfileCard() {
   const name = useStore((s) => s.playerName);
   const timeZone = useStore((s) => s.timeZone);
   const time = useLocalTime(timeZone);
-  const [promo, setPromo] = useState(true);
+  const founder = useStore((s) => s.founder);
   const close = () => store.set({ popover: null });
   return (
     <div className="profile-card" role="dialog" aria-label="Your profile">
@@ -164,12 +197,12 @@ export function ProfileCard() {
         <button className="icon-btn" aria-label="Decorate desk"><Sprout size={18} /></button>
         <button className="icon-btn" aria-label="More"><EllipsisVertical size={18} /></button>
       </div>
-      {promo && (
-        <div className="profile-promo">
-          <button className="icon-btn plain promo-close" aria-label="Dismiss" onClick={() => setPromo(false)}><X size={16} /></button>
-          <div className="promo-icons"><Calendar size={20} /><Code size={20} /><Music size={20} /></div>
-          <p>Share your calendar, code and music activity on your profile</p>
-          <button className="btn outline">Connect apps</button>
+      {founder && (
+        <div className="player-about own">
+          <button className="icon-btn plain about-edit" aria-label="Edit founder profile" onClick={() => store.set({ popover: null, modal: "founder" })}><Pencil size={16} /></button>
+          <div className="about-stage">{optionLabel(STAGES, founder.stage)}</div>
+          {founder.building && <p>{founder.building}</p>}
+          <div className="chips">{founder.goals.map((g) => <span key={g} className="chip">{optionLabel(GOALS, g)}</span>)}</div>
         </div>
       )}
     </div>
@@ -178,26 +211,29 @@ export function ProfileCard() {
 
 export function BottomBar() {
   const profileOpen = useStore((s) => s.popover === "profile");
-  const [mic, setMic] = useState(false);
-  const [cam, setCam] = useState(false);
+  const mic = useStore((s) => s.mic);
+  const cam = useStore((s) => s.cam);
+  const inPrivate = useStore((s) => s.net.lobby !== MAIN_LOBBY);
   return (
     <div className="bottom-bar">
       <button className="bar-me" aria-label="Your profile" aria-expanded={profileOpen} onClick={() => store.set({ popover: profileOpen ? null : "profile" })}>
         <ProfilePic size={36} status />
       </button>
       <span className="bar-sep" />
-      <button className={"bar-btn" + (mic ? "" : " off")} aria-label={mic ? "Mute" : "Unmute"} aria-pressed={mic} onClick={() => setMic(!mic)}>
+      <button className={"bar-btn" + (mic ? "" : " off")} aria-label={mic ? "Mute" : "Unmute"} aria-pressed={mic} onClick={() => void setMic(!mic)}>
         {mic ? <Mic {...ICON} /> : <MicOff {...ICON} />}
       </button>
       <button className="bar-caret" aria-label="Microphone options"><ChevronUp size={14} strokeWidth={2.5} /></button>
-      <button className={"bar-btn" + (cam ? "" : " off")} aria-label={cam ? "Stop camera" : "Start camera"} aria-pressed={cam} onClick={() => setCam(!cam)}>
+      <button className={"bar-btn" + (cam ? "" : " off")} aria-label={cam ? "Stop camera" : "Start camera"} aria-pressed={cam} onClick={() => void setCam(!cam)}>
         {cam ? <Video {...ICON} /> : <VideoOff {...ICON} />}
       </button>
       <button className="bar-caret" aria-label="Camera options"><ChevronUp size={14} strokeWidth={2.5} /></button>
       <button className="bar-btn" aria-label="Reactions"><Smile {...ICON} /></button>
       <button className="bar-btn" aria-label="Select area"><SquareDashed {...ICON} /></button>
       <span className="bar-sep" />
-      <button className="bar-btn danger" aria-label="Leave office"><DoorOpen {...ICON} /></button>
+      <button className="bar-btn danger" aria-label="Leave to the main lobby" title={inPrivate ? "Leave to the main lobby" : "You are in the main lobby"} disabled={!inPrivate} onClick={() => void joinLobby(MAIN_LOBBY)}>
+        <DoorOpen {...ICON} />
+      </button>
     </div>
   );
 }
