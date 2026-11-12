@@ -4,6 +4,7 @@ import { joinLobby, lobbyFromUrl } from "./net/room";
 import { initSession } from "./net/session";
 import { startVoice } from "./net/voice";
 import { startRouter } from "./router";
+import { startReminders } from "./state/calendar";
 import { store } from "./state/store";
 import { App } from "./ui/App";
 import "./ui/styles.css";
@@ -18,6 +19,7 @@ function start() {
   started = true;
   const game = createGame(document.getElementById("game")!);
   startVoice();
+  startReminders();
   void joinLobby(invitedTo);
   // Expose for debugging / automated tests.
   (window as unknown as { __game: unknown }).__game = game;

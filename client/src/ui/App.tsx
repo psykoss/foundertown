@@ -6,6 +6,8 @@ import { EditAvatar } from "./EditAvatar";
 import { AuthScreen } from "./Auth";
 import { Onboarding } from "./Onboarding";
 import { CallLayer, InviteDialog, LobbyChip, Notice, PlayerCard } from "./Social";
+import { CalendarView, MeetingDialog } from "./Calendar";
+import { SettingsDialog } from "./Settings";
 
 /** Matches `--t-open` in styles.css. */
 const EXIT_MS = 200;
@@ -28,6 +30,7 @@ export function App() {
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const popover = useStore((s) => s.popover);
   const modal = useStore((s) => s.modal);
+  const view = useStore((s) => s.view);
   const avatarReturn = useStore((s) => s.avatarReturn);
   const hud = useStore((s) => s.hud);
   const debug = useStore((s) => s.debug);
@@ -83,9 +86,11 @@ export function App() {
                 <div className="muted">F1 grid · F2 collision · F3 depth</div>
               </div>
             )}
+            {view === "map" && <MapControls />}
+            {view === "map" && <BottomBar />}
+            {/* the calendar page covers the town (which keeps running); calls stay on top of it */}
+            <Presence show={view === "calendar"}><CalendarView /></Presence>
             <CallLayer />
-            <MapControls />
-            <BottomBar />
           </>
         )}
       </div>
@@ -100,6 +105,8 @@ export function App() {
       <Presence show={modal === "editAvatar"}><EditAvatar /></Presence>
       <Presence show={modal === "invite"}><InviteDialog /></Presence>
       <Presence show={modal === "founder"}><Onboarding edit /></Presence>
+      <Presence show={modal === "settings"}><SettingsDialog /></Presence>
+      <Presence show={modal === "meeting"}><MeetingDialog /></Presence>
       <Notice />
     </>
   );

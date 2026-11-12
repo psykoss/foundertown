@@ -3,7 +3,7 @@
  * Phaser rendering never owns game state (see CLAUDE.md §Rules).
  */
 import { useSyncExternalStore } from "react";
-import { DEFAULT_AVATAR, MAIN_LOBBY, type Avatar, type Dir, type FounderProfile, type ItemRegistry } from "@ft/shared";
+import { DEFAULT_AVATAR, MAIN_LOBBY, sanitizeMeetings, type Avatar, type Dir, type FounderProfile, type ItemRegistry, type Meeting } from "@ft/shared";
 
 export interface DebugFlags {
   grid: boolean;
@@ -33,7 +33,30 @@ export interface Minimap {
 
 /** Small anchored panels (one at a time) and blocking dialogs. */
 export type Popover = "menu" | "profile" | "player";
-export type Modal = "editProfile" | "editAvatar" | "invite" | "founder";
+export type Modal = "editProfile" | "editAvatar" | "invite" | "founder" | "settings" | "meeting";
+/** What fills the frame: the town, or the calendar page (the town keeps running under it). */
+export type View = "map" | "calendar";
+
+/** Preferences, kept on this device (`ft.settings.v1`). */
+export interface Settings {
+  /** Clock style everywhere a time is shown. */
+  hour12: boolean;
+  /** Calendar: first day of the week (0 = Sunday, 1 = Monday) and the length of a new meeting. */
+  weekStart: 0 | 1;
+  meetingMinutes: 30 | 60;
+  /** Meeting reminders: 5 minutes before, at the start, and whether they make a sound. */
+  remindSoon: boolean;
+  remindStart: boolean;
+  remindSound: boolean;
+  /** Chosen devices ("" = the system default). */
+  micId: string;
+  camId: string;
+  noiseSuppression: boolean;
+  /** How loud other people are, 0–1. */
+  volume: number;
+  /** Show your own camera mirrored (only for you). */
+  mirror: boolean;
+}
 
 /** Where the account is in its life cycle; the game starts at "ready". */
 export interface Session {
@@ -108,6 +131,12 @@ export interface AppState {
   modal: Modal | null;
   /** Where "Edit Avatar" returns to when closed. */
   avatarReturn: Modal | null;
+  view: View;
+  settings: Settings;
+  /** Your meetings, sorted by start (kept on this device, `ft.meetings.v1`). */
+  meetings: Meeting[];
+  /** What the "meeting" dialog is about: an existing meeting, or a new one starting at `start`. */
+  meetingEdit: { id: string } | { start: number } | null;
   sidebarOpen: boolean;
   minimapOpen: boolean;
   minimap: Minimap | null;
@@ -191,6 +220,45 @@ export function persistProfile(p: Profile) {
 }
 const profile = loadProfile();
 
+const SETTINGS_KEY = "ft.settings.v1";
+const MEETINGS_KEY = "ft.meetings.v1";
+function readJson(key: string): unknown {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "null");
+  } catch {
+    return null;
+  }
+}
+function writeJson(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage unavailable */
+  }
+}
+function loadSettings(): Settings {
+  const defaults: Settings = {
+    hour12: new Intl.DateTimeFormat(undefined, { hour: "numeric" }).resolvedOptions().hour12 ?? true,
+    weekStart: 0,
+    meetingMinutes: 30,
+    remindSoon: true,
+    remindStart: true,
+    remindSound: true,
+    micId: "",
+    camId: "",
+    noiseSuppression: true,
+    volume: 1,
+    mirror: true,
+  };
+  const raw = readJson(SETTINGS_KEY) as Partial<Record<keyof Settings, unknown>> | null;
+  if (!raw || typeof raw !== "object") return defaults;
+  // keep only stored values of the right type, so an old or edited entry cannot break a control
+  const out = { ...defaults } as Record<keyof Settings, unknown>;
+  for (const k of Object.keys(defaults) as (keyof Settings)[]) if (typeof raw[k] === typeof defaults[k]) out[k] = raw[k];
+  const s = out as unknown as Settings;
+  return { ...s, weekStart: s.weekStart === 1 ? 1 : 0, meetingMinutes: s.meetingMinutes === 60 ? 60 : 30, volume: Math.min(1, Math.max(0, s.volume)) };
+}
+
 export const store = createStore<AppState>({
   ready: false,
   registry: null,
@@ -216,6 +284,10 @@ export const store = createStore<AppState>({
   selected: null,
   modal: null,
   avatarReturn: null,
+  view: "map",
+  settings: loadSettings(),
+  meetings: sanitizeMeetings(readJson(MEETINGS_KEY)),
+  meetingEdit: null,
   sidebarOpen: true,
   minimapOpen: true,
   minimap: null,
@@ -223,6 +295,9 @@ export const store = createStore<AppState>({
   debug: { grid: false, collision: false, depth: false },
   hud: { fps: 0, tileX: 0, tileY: 0, zone: null, zoom: 1 },
 });
+
+store.watch((s) => s.settings, (v) => writeJson(SETTINGS_KEY, v));
+store.watch((s) => s.meetings, (v) => writeJson(MEETINGS_KEY, v));
 
 export function useStore<S>(select: (s: AppState) => S): S {
   return useSyncExternalStore(store.subscribe, () => select(store.get()));

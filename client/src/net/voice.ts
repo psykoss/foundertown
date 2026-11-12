@@ -18,10 +18,14 @@ import { getToken } from "./session";
 
 type Kind = "audio" | "video";
 
-const CONSTRAINTS: Record<Kind, MediaStreamConstraints> = {
-  audio: { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } },
-  video: { video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } },
-};
+/** What to ask the browser for: the device picked in Settings (`deviceId`, "" = system default) and the audio clean-up. */
+function constraints(kind: Kind, deviceId: string): MediaStreamConstraints {
+  const device = deviceId ? { deviceId: { exact: deviceId } } : {};
+  return kind === "audio"
+    ? { audio: { ...device, echoCancellation: true, noiseSuppression: store.get().settings.noiseSuppression, autoGainControl: true } }
+    : { video: { ...device, width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } };
+}
+const chosen = (kind: Kind) => store.get().settings[kind === "audio" ? "micId" : "camId"];
 const BLOCKED: Record<Kind, string> = {
   audio: "Microphone is blocked — allow it in your browser's site settings.",
   video: "Camera is blocked — allow it in your browser's site settings.",
@@ -74,7 +78,10 @@ async function setDevice(kind: Kind, on: boolean) {
   if (on) {
     busy[kind] = true;
     try {
-      const track = (await navigator.mediaDevices.getUserMedia(CONSTRAINTS[kind])).getTracks()[0]!;
+      const get = (deviceId: string) => navigator.mediaDevices.getUserMedia(constraints(kind, deviceId));
+      // the chosen device may be unplugged: fall back to the system default
+      const stream = await get(chosen(kind)).catch((e) => (chosen(kind) ? get("") : Promise.reject(e)));
+      const track = stream.getTracks()[0]!;
       track.onended = () => void setDevice(kind, false); // unplugged, or permission revoked
       tracks[kind] = track;
     } catch {
@@ -102,6 +109,25 @@ async function setDevice(kind: Kind, on: boolean) {
 
 export const setMic = (on: boolean) => setDevice("audio", on);
 export const setCam = (on: boolean) => setDevice("video", on);
+
+/** A device setting changed: if that device is on, reopen it with the new choice. */
+async function reopen(kind: Kind) {
+  if (!tracks[kind]) return;
+  await setDevice(kind, false);
+  await setDevice(kind, true);
+}
+
+/** Microphones or cameras to choose from. Browsers only name them once the device has been allowed. */
+export async function listDevices(kind: Kind): Promise<{ id: string; label: string }[]> {
+  try {
+    const all = await navigator.mediaDevices.enumerateDevices();
+    return all
+      .filter((d) => d.kind === `${kind}input` && d.deviceId && d.deviceId !== "default")
+      .map((d, i) => ({ id: d.deviceId, label: d.label || `${kind === "audio" ? "Microphone" : "Camera"} ${i + 1}` }));
+  } catch {
+    return [];
+  }
+}
 
 // ── peer connections ───────────────────────────────────────────────────────────
 
@@ -210,7 +236,7 @@ function tick() {
     const called = inCall.includes(p.id);
     const distance = tileDistance(me, p);
     const peer = peers.get(p.id);
-    if (peer) peer.audio.volume = called ? 1 : voiceVolume(distance);
+    if (peer) peer.audio.volume = (called ? 1 : voiceVolume(distance)) * s.settings.volume;
     else if ((called || distance <= VOICE.connect) && me.id < p.id) open(p.id);
   }
 }
@@ -291,4 +317,7 @@ export function startVoice() {
   setInterval(tick, 250);
   // a fresh room session starts with both flags off: tell it what is actually on
   store.watch((s) => s.selfId, (id) => id && sendMedia({ speaking: store.get().speaking, cam: store.get().cam }));
+  // Settings → devices
+  store.watch((s) => `${s.settings.micId}|${s.settings.noiseSuppression}`, () => void reopen("audio"));
+  store.watch((s) => s.settings.camId, () => void reopen("video"));
 }

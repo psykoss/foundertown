@@ -86,7 +86,7 @@ export class WorldScene extends Phaser.Scene {
       this.player.refreshAvatar();
     });
     store.watch((s) => s.playerName, (n) => (me.name = n));
-    store.watch((s) => s.modal, (m) => (this.input_.enabled = !m));
+    store.watch((s) => !!s.modal || s.view !== "map", (away) => (this.input_.enabled = !away));
     store.watch((s) => s.speaking, (on) => this.player.label.setSpeaking(on));
 
     // Net → world bindings

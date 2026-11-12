@@ -78,13 +78,13 @@ export function PlayerCard() {
   );
 }
 
-function VideoTile({ stream, name }: { stream: MediaStream; name: string }) {
+function VideoTile({ stream, name, mirror = false }: { stream: MediaStream; name: string; mirror?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
   return (
-    <div className="video-tile">
+    <div className={"video-tile" + (mirror ? " mirror" : "")}>
       {/* always muted: remote sound plays through the voice layer, at proximity volume */}
       <video ref={ref} autoPlay playsInline muted />
       <span className="video-name">{name}</span>
@@ -101,6 +101,7 @@ export function CallLayer() {
   const players = useStore((s) => s.players);
   const videos = useStore((s) => s.videos);
   const localVideo = useStore((s) => s.localVideo);
+  const mirror = useStore((s) => s.settings.mirror);
   const mic = useStore((s) => s.mic);
   const [full, setFull] = useState(false);
   const caller = calls.incoming ? players[calls.incoming] : undefined;
@@ -130,7 +131,7 @@ export function CallLayer() {
         <section className={"call-panel" + (full ? " full" : "")} style={{ "--cols": cols, "--rows": rows } as CSSProperties} aria-label="Video call">
           <div className="call-tiles">
             {live.map((id) => <VideoTile key={id} stream={videos[id]!} name={players[id]!.name} />)}
-            {localVideo && <VideoTile stream={localVideo} name="You" />}
+            {localVideo && <VideoTile stream={localVideo} name="You" mirror={mirror} />}
           </div>
           <div className="call-bar">
             <button className={"bar-btn" + (mic ? "" : " off")} aria-label={mic ? "Mute" : "Unmute"} aria-pressed={mic} title={mic ? "Mute microphone" : "Unmute microphone"} onClick={() => void setMic(!mic)}>

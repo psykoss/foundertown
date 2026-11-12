@@ -84,6 +84,7 @@ function SideButton({ label, active, onClick, children }: { label: string; activ
 
 export function Sidebar() {
   const menuOpen = useStore((s) => s.popover === "menu");
+  const view = useStore((s) => s.view);
   return (
     <nav className="sidebar">
       <button
@@ -100,14 +101,14 @@ export function Sidebar() {
       <div className="kbd-hint"><kbd>⌘</kbd><kbd>K</kbd></div>
       <div className="side-sep" />
 
-      <SideButton label="Map" active><MapIcon {...ICON} /></SideButton>
+      <SideButton label="Map" active={view === "map"} onClick={() => store.set({ view: "map" })}><MapIcon {...ICON} /></SideButton>
       <SideButton label="Chat"><MessagesSquare {...ICON} /></SideButton>
-      <SideButton label="Calendar"><Calendar {...ICON} /></SideButton>
+      <SideButton label="Calendar" active={view === "calendar"} onClick={() => store.set({ view: "calendar", popover: null })}><Calendar {...ICON} /></SideButton>
       <SideButton label="Notifications"><Bell {...ICON} /></SideButton>
 
       <div className="side-spacer" />
       <SideButton label="Rewards"><Gift {...ICON} /></SideButton>
-      <SideButton label="Settings"><Settings {...ICON} /></SideButton>
+      <SideButton label="Settings" onClick={() => store.set({ modal: "settings", popover: null })}><Settings {...ICON} /></SideButton>
     </nav>
   );
 }
@@ -131,7 +132,7 @@ export function LogoMenu() {
         <UserPlus size={18} strokeWidth={2} /> Invite to lobby
       </button>
       <div className="menu-group">
-        <MenuItem icon={<Settings {...i} />}>Settings</MenuItem>
+        <MenuItem icon={<Settings {...i} />} onClick={() => store.set({ modal: "settings" })}>Settings</MenuItem>
         <MenuItem icon={<SquarePen {...i} />}>Report an issue</MenuItem>
         <MenuItem icon={<CircleHelp {...i} />}>Help docs</MenuItem>
         {lobby !== MAIN_LOBBY && <MenuItem icon={<DoorOpen {...i} />} onClick={() => void joinLobby(MAIN_LOBBY)}>Go to main lobby</MenuItem>}
@@ -158,11 +159,12 @@ export function LogoMenu() {
 
 /** Current time in a zone, refreshed every 20 s. */
 function useLocalTime(timeZone: string): string {
+  const hour12 = useStore((s) => s.settings.hour12);
   const fmt = () => {
     try {
-      return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", timeZone }).format(new Date());
+      return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", hour12, timeZone }).format(new Date());
     } catch {
-      return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date());
+      return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", hour12 }).format(new Date());
     }
   };
   const [time, setTime] = useState(fmt);
@@ -171,7 +173,7 @@ function useLocalTime(timeZone: string): string {
     const id = setInterval(() => setTime(fmt()), 20_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeZone]);
+  }, [timeZone, hour12]);
   return time;
 }
 
@@ -239,8 +241,11 @@ export function BottomBar() {
   );
 }
 
-/** Vector floor plan (SVG, so it is sharp at any size): line drawing of walls and furniture, and where you are. */
-function Minimap() {
+/**
+ * Vector floor plan (SVG, so it is sharp at any size): line drawing of walls and furniture, and where you are.
+ * Clicking it toggles a larger view, or calls `onPick` when one is given (the calendar's town card).
+ */
+export function Minimap({ onPick }: { onPick?: () => void }) {
   const map = useStore((s) => s.minimap);
   const tileX = useStore((s) => s.hud.tileX);
   const tileY = useStore((s) => s.hud.tileY);
@@ -266,7 +271,12 @@ function Minimap() {
 
   if (!map) return null;
   return (
-    <button className={"minimap" + (big ? " big" : "")} aria-label={big ? "Shrink minimap" : "Enlarge minimap"} aria-pressed={big} onClick={() => setBig(!big)}>
+    <button
+      className={"minimap" + (big ? " big" : "")}
+      aria-label={onPick ? "Back to the town" : big ? "Shrink minimap" : "Enlarge minimap"}
+      aria-pressed={onPick ? undefined : big}
+      onClick={onPick ?? (() => setBig(!big))}
+    >
       <svg viewBox={`-0.5 -0.5 ${map.width + 1} ${map.height + 1}`} style={{ aspectRatio: `${map.width + 1} / ${map.height + 1}` }}>
         {map.furniture.map((f, i) => <rect key={i} x={f.x + 0.12} y={f.y + 0.12} width={Math.max(0.2, f.w - 0.24)} height={Math.max(0.2, f.h - 0.24)} rx="0.18" className="mm-furniture" />)}
         <rect width={map.width} height={map.height} className="mm-line" />

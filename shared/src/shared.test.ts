@@ -19,6 +19,7 @@ import {
   parseWorld,
   type TiledMap,
   sanitizeFounder, sanitizeName, isLobby, voiceVolume, BUILDING_MAX, MAIN_LOBBY, VOICE,
+  weekDays, startOfWeek, monthDays, sameDay, layoutDay, dueReminders, sanitizeMeetings, MIN_BLOCK_MIN, type Meeting,
 } from "./index.js";
 
 describe("movement", () => {
@@ -166,5 +167,56 @@ describe("protocol", () => {
     expect(voiceVolume(VOICE.silent)).toBe(0);
     expect(voiceVolume((VOICE.full + VOICE.silent) / 2)).toBeCloseTo(0.5);
     expect(VOICE.disconnect).toBeGreaterThan(VOICE.connect);
+  });
+});
+
+describe("calendar", () => {
+  const at = (day: number, h: number, m = 0) => new Date(2026, 10, day, h, m).getTime(); // November 2026
+  const meet = (id: string, start: number, end: number): Meeting => ({ id, title: id, start, end, notes: "" });
+
+  it("finds the week and the month grid", () => {
+    // 12 Nov 2026 is a Thursday
+    expect(weekDays(at(12, 15), 0).map((d) => d.getDate())).toEqual([8, 9, 10, 11, 12, 13, 14]);
+    expect(weekDays(at(12, 15), 1).map((d) => d.getDate())).toEqual([9, 10, 11, 12, 13, 14, 15]);
+    expect(startOfWeek(at(8, 0), 1).getDate()).toBe(2); // a Sunday belongs to the week that started on Monday
+    const month = monthDays(at(12, 15), 0);
+    expect(month).toHaveLength(42);
+    expect([month[0]!.getMonth(), month[0]!.getDate()]).toEqual([10, 1]); // 1 Nov 2026 is a Sunday
+    expect(sameDay(at(12, 0), at(12, 23, 59))).toBe(true);
+    expect(sameDay(at(12, 23, 59), at(13, 0))).toBe(false);
+  });
+
+  it("lays overlapping meetings side by side", () => {
+    const blocks = layoutDay([meet("a", at(12, 9), at(12, 10)), meet("b", at(12, 9, 30), at(12, 11)), meet("c", at(12, 10), at(12, 10, 30)), meet("d", at(12, 14), at(12, 15))], at(12, 0));
+    const by = Object.fromEntries(blocks.map((b) => [b.meeting.id, b]));
+    expect([by.a!.from, by.a!.to]).toEqual([540, 600]);
+    expect([by.a!.lane, by.b!.lane, by.c!.lane]).toEqual([0, 1, 0]); // c reuses a's lane once a is over
+    expect([by.a!.lanes, by.b!.lanes, by.c!.lanes, by.d!.lanes]).toEqual([2, 2, 2, 1]);
+  });
+
+  it("clips a meeting to each day it touches", () => {
+    const late = meet("late", at(12, 23), at(13, 1));
+    expect(layoutDay([late], at(12, 0)).map((b) => [b.from, b.to])).toEqual([[1380, 1440]]);
+    expect(layoutDay([late], at(13, 0)).map((b) => [b.from, b.to])).toEqual([[0, 60]]);
+    expect(layoutDay([late], at(14, 0))).toEqual([]);
+    // a 5-minute meeting still gets a readable block
+    expect(layoutDay([meet("short", at(12, 9), at(12, 9, 5))], at(12, 0))[0]!.to).toBe(540 + MIN_BLOCK_MIN);
+  });
+
+  it("reminds once before and once at the start", () => {
+    const m = meet("m", at(12, 9), at(12, 10));
+    const both = { soon: true, now: true };
+    expect(dueReminders([m], at(12, 8, 54), at(12, 8, 55), both)).toEqual([{ meeting: m, kind: "soon" }]);
+    expect(dueReminders([m], at(12, 8, 55), at(12, 8, 56), both)).toEqual([]);
+    expect(dueReminders([m], at(12, 8, 59), at(12, 9), both)).toEqual([{ meeting: m, kind: "now" }]);
+    expect(dueReminders([m], at(12, 8, 54), at(12, 8, 55), { soon: false, now: true })).toEqual([]);
+    // the tab slept through both moments: only "now" is said
+    expect(dueReminders([m], at(12, 8), at(12, 9, 1), both)).toEqual([{ meeting: m, kind: "now" }]);
+  });
+
+  it("drops malformed stored meetings", () => {
+    expect(sanitizeMeetings("nope")).toEqual([]);
+    expect(sanitizeMeetings([{ id: "x", title: " Demo ", start: 2, end: 3 }, { id: "y", title: "bad", start: 5, end: 5 }, null, { id: "z", title: "", start: 0, end: 1 }]))
+      .toEqual([{ id: "z", title: "Meeting", start: 0, end: 1, notes: "" }, { id: "x", title: "Demo", start: 2, end: 3, notes: "" }]);
   });
 });
