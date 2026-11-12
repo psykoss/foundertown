@@ -2,8 +2,9 @@ import { CityCanvas } from "./city/CityCanvas";
 import { PixelTitle } from "./PixelTitle";
 
 /** Where "Join now" goes: the game client, opened on its sign-up screen (then onboarding, then the town). */
-const APP_URL: string = (import.meta.env.VITE_APP_URL ?? "http://localhost:5173").replace(/\/$/, "");
-const JOIN_URL = `${APP_URL}/?join`;
+// Production: same site (thefoundertown.com/signup). Dev: the client's own dev server.
+const APP_URL: string = (import.meta.env.VITE_APP_URL ?? (import.meta.env.DEV ? "http://localhost:5173" : "")).replace(/\/$/, "");
+const JOIN_URL = `${APP_URL}/signup`;
 
 /**
  * Founder Town mark (same art as the game's logo), as pixel art on a 16×16 grid: an isometric block — the first building of a

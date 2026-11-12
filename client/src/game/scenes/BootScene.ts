@@ -3,7 +3,7 @@ import Phaser from "phaser";
 import type { ItemRegistry } from "@ft/shared";
 import { store } from "../../state/store";
 
-const A = "assets/";
+const A = `${import.meta.env.BASE_URL}assets/`;
 
 export class BootScene extends Phaser.Scene {
   constructor() {

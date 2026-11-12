@@ -9,7 +9,7 @@ import {
   type Avatar, type Channel, type ItemRegistry, type Layer, type Ramp,
 } from "@ft/shared";
 
-const BASE = "assets/characters/";
+const BASE = `${import.meta.env.BASE_URL}assets/characters/`;
 const images = new Map<string, Promise<HTMLImageElement>>();
 const baked = new Map<string, Promise<HTMLCanvasElement>>();
 

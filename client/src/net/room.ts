@@ -8,6 +8,7 @@ import {
   EMPTY_FOUNDER, MAIN_LOBBY, MSG, ROOM, isLobby,
   type Avatar, type CallKind, type Dir, type JoinOptions, type MediaMsg, type MoveMsg, type PlayerState, type ProfileMsg, type Relay, type RtcData, type SnapMsg,
 } from "@ft/shared";
+import { lobbyCodeFromUrl, PLAY_PATH } from "../router";
 import { store, type RemotePlayer } from "../state/store";
 import { SERVER_URL } from "./config";
 import { getToken } from "./session";
@@ -26,14 +27,15 @@ type RelayHandler<T> = (from: string, data: T) => void;
 const rtcHandlers = new Set<RelayHandler<RtcData>>();
 const callHandlers = new Set<RelayHandler<CallKind>>();
 
-/** Lobby named by the page URL (`?lobby=code`), else the main lobby. */
+/** Lobby named by the page URL (`/play/<code>` or `?lobby=<code>`), else the main lobby. */
 export function lobbyFromUrl(): string {
-  const code = new URLSearchParams(location.search).get("lobby");
+  const code = lobbyCodeFromUrl();
   return isLobby(code) ? code : MAIN_LOBBY;
 }
 
+/** Shareable link to a lobby: `/play` (main) or `/play/<code>`. */
 export function lobbyUrl(lobby: string): string {
-  return location.origin + location.pathname + (lobby === MAIN_LOBBY ? "" : `?lobby=${lobby}`);
+  return location.origin + PLAY_PATH + (lobby === MAIN_LOBBY ? "" : `/${lobby}`);
 }
 
 function profile(): ProfileMsg {

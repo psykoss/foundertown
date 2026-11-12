@@ -1,0 +1,28 @@
+# thefoundertown.com — the landing page at /, the game client under /app/ and on its routes.
+# Railway terminates HTTPS and sets PORT; Caddy only serves files.
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode zstd gzip
+
+	@www host www.thefoundertown.com
+	redir @www https://thefoundertown.com{uri} permanent
+
+	# Game client routes all serve the client page; it shows the screen for the session (client/src/router.ts).
+	@app path /login /signup /forgot-password /reset-password /onboarding /play /play/*
+	rewrite @app /app/index.html
+
+	# Pages always revalidate; hashed bundles can be cached for good.
+	@html path *.html
+	header @html Cache-Control "no-cache"
+	@hashed path_regexp \/assets\/index-[\w-]+\.(js|css)$
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+	# Anything else that isn't a file: the landing page.
+	try_files {path} /index.html
+	file_server
+}

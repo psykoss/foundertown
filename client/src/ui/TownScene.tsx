@@ -8,7 +8,7 @@ import { TILE, type Avatar, type ItemRegistry } from "@ft/shared";
 import { store, useStore } from "../state/store";
 import { AvatarSprite, CROP } from "./AvatarSprite";
 
-const A = "assets/";
+const A = `${import.meta.env.BASE_URL}assets/`;
 /** Terrain tileset: 8 columns of 32px tiles (indices from `scripts/lib/env.ts`). */
 const COLS = 8;
 const T = { floor: 4, carpet: 5, faceTop: 17, faceTopWindow: 18, faceBottom: 19 } as const;

@@ -29,8 +29,6 @@ const FOUNDER_KEY = "ft.founder.v1";
 const LOBBY_KEY = "ft.lobby.v1";
 const GUEST_KEY = "ft.guest.v1";
 
-/** Arrived from the landing page's "Join now" (`?join`): start on "create account" rather than "sign in". */
-export const joining = new URLSearchParams(location.search).has("join");
 const local = {
   get(key: string): string | null {
     try {
@@ -168,7 +166,7 @@ export async function signUp(email: string, password: string): Promise<string | 
 }
 
 export async function sendPasswordReset(email: string): Result {
-  const { error } = await supabase!.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  const { error } = await supabase!.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/reset-password${location.search}` });
   return error?.message ?? null;
 }
 

@@ -3,12 +3,11 @@
  * Same full-screen look as onboarding: the office scene on the left, the form on the right.
  */
 import { useState, type FormEvent } from "react";
-import { authEnabled, continueAsGuest, joining, sendPasswordReset, setNewPassword, signInWithGoogle, signInWithPassword, signUp } from "../net/session";
+import { authEnabled, continueAsGuest, sendPasswordReset, setNewPassword, signInWithGoogle, signInWithPassword, signUp } from "../net/session";
+import { authModeFromUrl, showAuthMode, type AuthMode as Mode } from "../router";
 import { useStore } from "../state/store";
 import { Logo } from "./Shell";
 import { TownScene } from "./TownScene";
-
-type Mode = "signIn" | "signUp" | "reset";
 
 const COPY: Record<Mode | "recovery", { title: string; submit: string }> = {
   signIn: { title: "Welcome back", submit: "Sign in" },
@@ -31,7 +30,12 @@ function GoogleMark() {
 export function AuthScreen() {
   const recovery = useStore((s) => s.session.status === "recovery");
   const avatar = useStore((s) => s.avatar);
-  const [mode, setMode] = useState<Mode>(joining ? "signUp" : "signIn");
+  const [mode, setModeState] = useState<Mode>(authModeFromUrl);
+  // Each mode has its own path (/login, /signup, /forgot-password).
+  const setMode = (m: Mode) => {
+    setModeState(m);
+    showAuthMode(m);
+  };
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);

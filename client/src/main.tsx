@@ -3,6 +3,7 @@ import { createGame } from "./game/createGame";
 import { joinLobby, lobbyFromUrl } from "./net/room";
 import { initSession } from "./net/session";
 import { startVoice } from "./net/voice";
+import { startRouter } from "./router";
 import { store } from "./state/store";
 import { App } from "./ui/App";
 import "./ui/styles.css";
@@ -22,5 +23,6 @@ function start() {
   (window as unknown as { __game: unknown }).__game = game;
 }
 store.subscribe(start);
+startRouter();
 initSession();
 start();

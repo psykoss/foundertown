@@ -27,7 +27,7 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
 }
 
 export function lobbyLink(lobby: string): string {
-  return lobby === MAIN_LOBBY ? env.appUrl : `${env.appUrl}/?lobby=${lobby}`;
+  return lobby === MAIN_LOBBY ? `${env.appUrl}/play` : `${env.appUrl}/play/${lobby}`;
 }
 
 export async function handleInvite(req: IncomingMessage, res: ServerResponse) {
