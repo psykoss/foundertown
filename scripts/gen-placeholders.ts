@@ -107,10 +107,28 @@ class Frame {
   dot(x: number, y: number, hex: string, alpha = 255) {
     this.ops.push(() => this.c.set(x, y, hex, alpha));
   }
+  /**
+   * Hand-authored pixels, one string per row starting at row `top` (each exactly one frame wide):
+   * `#` outline · `0`–`3` primary shades · `a`–`d` secondary shades (dark → light) · `s` `w` silver · `.` empty.
+   */
+  stamp(rows: readonly string[], top: number) {
+    rows.forEach((row, j) => {
+      if (row.length !== FRAME_W) throw new Error(`stamp row ${j} is ${row.length} px wide, not ${FRAME_W}: "${row}"`);
+      for (let x = 0; x < FRAME_W; x++) {
+        const ch = row[x]!;
+        if (ch === ".") continue;
+        const hex = STAMP_FIXED[ch] ?? (ch >= "a" ? KEY_RAMPS.secondary["abcd".indexOf(ch)] : KEY_RAMPS.primary[Number(ch)]);
+        if (!hex) throw new Error(`stamp: unknown pixel "${ch}"`);
+        this.dot(x, top + j, hex);
+      }
+    });
+  }
   flush() {
     this.ops.forEach((o) => o());
   }
 }
+
+const STAMP_FIXED: Record<string, string> = { "#": BLACK, s: FIXED_COLORS.base1, w: FIXED_COLORS.base2 };
 
 const rr = (reg: Region, r: R, round = 0) => (round ? reg.round(r.x, r.y, r.w, r.h, round) : reg.rect(r.x, r.y, r.w, r.h));
 const grow = (r: R, d: number): R => ({ x: r.x - d, y: r.y - d, w: r.w + 2 * d, h: r.h + 2 * d });
@@ -382,6 +400,20 @@ const drawers: Record<string, Drawer> = {
   "body/body_01.png": (f) => f.c.blit(source(f.p, "body"), 0, 0),
   "body/head_01.png": (f) => f.c.blit(source(f.p, "head"), 0, 0),
   "face/face_01.png": (f) => f.c.blit(source(f.p, "face"), 0, 0),
+  "face/face_02.png": (f) => {
+    // the default face with lashes: the lid line runs one pixel past the outer corner and flicks up
+    f.c.blit(source(f.p, "face"), 0, 0);
+    if (f.dir === "up") return;
+    const [l, r] = f.p.eyes;
+    const lash = (x: number, y: number, out: number) => {
+      f.dot(x, y, FIXED_COLORS.eye);
+      f.dot(x + out, y - 1, FIXED_COLORS.eye);
+    };
+    if (f.dir === "down") {
+      lash(l!.x - 1, l!.y, -1);
+      lash(r!.x + 3, r!.y, 1);
+    } else lash(l!.x + 3, l!.y, 1);
+  },
 
   // ── hair ──
   "hair/hair_short_01.png": (f) => hairCap(f, 2),
@@ -395,8 +427,10 @@ const drawers: Record<string, Drawer> = {
     // ears stay visible (this layer is drawn over the head in the back view)
     for (let y = 0; y < FRAME_H; y++) for (let x = 0; x < FRAME_W; x++) if (isEar(f, x, y)) r.px(x, y, false);
   },
-  "hair/hair_swept_01.png": (f) => sweptHair(f),
-  "hair/hair_swept_01_hat.png": (f) => sweptHair(f, true),
+  "hair/hair_swept_01.png": (f) => shapedHair(f, SWEPT[f.dir], { nape: true }),
+  "hair/hair_swept_01_hat.png": (f) => shapedHair(f, SWEPT[f.dir], { nape: true, underHat: true }),
+  "hair/hair_long_02.png": (f) => shapedHair(f, LONG[f.dir]),
+  "hair/hair_long_02_hat.png": (f) => shapedHair(f, LONG[f.dir], { underHat: true, looseFrom: LONG_LOOSE_TOP }),
   "hair/hair_bun_01.png": (f) => {
     const h = f.p.head;
     const bun = f.reg("primary");
@@ -435,6 +469,9 @@ const drawers: Record<string, Drawer> = {
       f.recolor("secondary", (c, x, y) => isTorso(c) && x <= 13 && y <= y0 + 5);
     }
   },
+
+  // a drawn shape, not a recolor: the cloth hangs from the shoulders over the arms down to the hips
+  "outerwear/outer_poncho_01.png": (f) => f.stamp(PONCHO[f.dir], PONCHO_TOP[f.dir] + f.p.m.bodyDy),
 
   // ── bottoms ──
   "bottom/bottom_pants_01.png": (f) => legsWear(f, 99),
@@ -479,6 +516,9 @@ const drawers: Record<string, Drawer> = {
     fromHead(f.headReg("primary"), f.p, (_x, y) => y <= h.y + 7);
     fromHead(f.headReg("secondary"), f.p, (_x, y) => y >= h.y + 6 && y <= h.y + 7); // cuff follows the oval
   },
+
+  // wide brim: wider than the head on purpose (like voluminous hair, a drawn shape that rides the head bob)
+  "headwear/head_cowgirl_01.png": (f) => f.stamp(COWGIRL[f.dir], COWGIRL_TOP + f.p.head.y - 29),
 
   // ── accessories ──
   "face_accessory/glasses_01.png": (f) => {
@@ -610,11 +650,107 @@ const SWEPT: Record<SheetDir, string[]> = {
   ],
 };
 
-/** `underHat`: clipped to the head silhouette so nothing pokes out around headwear. */
-function sweptHair(f: Frame, underHat = false) {
+/**
+ * Long hair with the same volume as the swept cut: a middle part with curtain bangs, strands framing the
+ * face, and the length falling over the shoulders (front), down the back (back) and behind the ear (side).
+ * Ears stay uncovered. Rows from LONG_LOOSE_TOP down hang below the head, so they are kept under a hat.
+ */
+const LONG: Record<SheetDir, string[]> = {
+  down: [
+    "............22222222............",
+    "..........223333333322..........",
+    "........2233333223333322........",
+    ".......233333321123333332.......",
+    "......23333222211222233332......",
+    "......23332222211222223332......",
+    "......23322222211222222332......",
+    "......222222221..122222222......",
+    "......22222221....12222222......",
+    "......2222221......1222222......",
+    "......222221........122222......",
+    ".........21..........12.........",
+    ".........2............2.........",
+    ".........2............2.........",
+    ".........2............2.........",
+    ".........2............2.........",
+    "......2222............2222......",
+    ".....22222............22222.....",
+    ".....2222..............2222.....",
+    ".....2212..............2122.....",
+    ".....2212..............2122.....",
+    ".....2212..............2122.....",
+    "......212..............212......",
+    ".......2................2.......",
+  ],
+  up: [
+    "............22222222............",
+    "..........223333333322..........",
+    "........2233333333333322........",
+    ".......233333333333333322.......",
+    "......23333223333332233332......",
+    "......23322123333321223332......",
+    "......22221223333221222222......",
+    "......22212222222222122222......",
+    "......22212222122222122222......",
+    "......22212221222122122222......",
+    "......22222221222122222222......",
+    ".........22221222122222.........",
+    ".........22122212221222.........",
+    ".........22122212221222.........",
+    ".........22122212221222.........",
+    ".........22122212221222.........",
+    "........2221222122212222........",
+    "........2221222122212222........",
+    "........2221222122212222........",
+    "........2221222122212222........",
+    "........2221222122212222........",
+    "........2221222122212222........",
+    "........2221222122212222........",
+    "........2221222122212222........",
+    ".........22122212221222.........",
+    "...........1111111111...........",
+  ],
+  left: [
+    "...........222222222............",
+    ".........2233333333322..........",
+    "........233333333333322.........",
+    ".......23333223333333322........",
+    ".......233222133333322232.......",
+    ".......2222213333322212322......",
+    ".......2222122222221222222......",
+    ".......2211222222212222222......",
+    "........222222222122222222......",
+    "........222222221222222222......",
+    ".............2222222222222......",
+    "...............22222222222......",
+    "...............222...22222......",
+    "...............222...22222......",
+    "................22...22222......",
+    "................22...22222......",
+    "................22..222222......",
+    "................2222222222......",
+    ".................222222222......",
+    "..................22212212......",
+    "..................22212212......",
+    "..................22212212......",
+    "..................22212212......",
+    "..................22212212......",
+    "..................2221221.......",
+    "...................221111.......",
+    "....................1111........",
+  ],
+};
+/** First row (idle frame) of the length that hangs below the head. */
+const LONG_LOOSE_TOP = 43;
+
+/**
+ * Hair from a hand-drawn template. `nape`: the back view fills the head below the template down to the
+ * collar. `underHat`: clipped to the head silhouette so nothing pokes out around headwear — except the
+ * rows from `looseFrom` (idle frame) down, which hang below the hat.
+ */
+function shapedHair(f: Frame, rows: string[], opts: { nape?: boolean; underHat?: boolean; looseFrom?: number } = {}) {
   const { p } = f;
   const dyHead = p.head.y - 29;
-  const rows = SWEPT[f.dir];
   const m = headMask(p);
   const inHead = (x: number, y: number) => x >= 0 && y >= 0 && x < FRAME_W && y < FRAME_H && m[y * FRAME_W + x] === 1;
   const tpl = (x: number, y: number) => rows[y - dyHead - SWEPT_TOP]?.[x] ?? ".";
@@ -627,10 +763,111 @@ function sweptHair(f: Frame, underHat = false) {
   });
   for (let y = 0; y < FRAME_H; y++)
     for (let x = 0; x < FRAME_W; x++) {
-      const back = f.dir === "up" && y - dyHead >= SWEPT_TOP + rows.length && y <= headBottom + 2 && inHead(x, y);
-      if ((tpl(x, y) !== "." || back) && !isEar(f, x, y) && (!underHat || inHead(x, y))) r.px(x, y);
+      const back = !!opts.nape && f.dir === "up" && y - dyHead >= SWEPT_TOP + rows.length && y <= headBottom + 2 && inHead(x, y);
+      const fits = !opts.underHat || inHead(x, y) || y - dyHead >= (opts.looseFrom ?? FRAME_H);
+      if ((tpl(x, y) !== "." || back) && !isEar(f, x, y) && fits) r.px(x, y);
     }
 }
+
+/**
+ * Calgary cowgirl hat: pinched crown, band with a silver buckle, wide brim curling up at the sides.
+ * Rows start at COWGIRL_TOP of the idle frame. The front brim stays inside the head thumbnail (cols 4–27).
+ */
+const COWGIRL_TOP = 24;
+const COWGIRL: Record<SheetDir, string[]> = {
+  down: [
+    "...........###....###...........",
+    "..........#333####333#..........",
+    ".........#233221122332#.........",
+    ".........#222221122222#.........",
+    ".........#122222222221#.........",
+    ".........#cccccwwccccc#.........",
+    "....###..#bbbbbssbbbbb#..###....",
+    "....#33##11111111111111##33#....",
+    "....#3322222222222222222233#....",
+    ".....#22111111111111111122#.....",
+    "......###11111111111111###......",
+    ".........##############.........",
+  ],
+  up: [
+    "...........###....###...........",
+    "..........#333####333#..........",
+    ".........#233221122332#.........",
+    ".........#222221122222#.........",
+    ".........#122222222221#.........",
+    ".........#cccccccccccc#.........",
+    "....###..#bbbbbbbbbbbb#..###....",
+    "....#33##11111111111111##33#....",
+    "....#3322222222222222222233#....",
+    ".....#22111111111111111122#.....",
+    "......###11111111111111###......",
+    ".........##############.........",
+  ],
+  left: [
+    "...........####.................",
+    "..........#3333#######..........",
+    ".........#233222222221#.........",
+    ".........#222222222221#.........",
+    ".........#122222222211#.........",
+    ".........#wccccccccccc#.........",
+    ".........#sbbbbbbbbbbb#..####...",
+    "....#####11111111111111##333#...",
+    "...#332222222222222222222222#...",
+    "..#22211111111111111111111##....",
+    "...#####1111111111111111##......",
+    "........################........",
+  ],
+};
+
+/**
+ * Peruvian poncho: a cloth draped from the shoulders to the hips, with an embroidered V yoke, a pointed
+ * panel down the chest and a patterned hem. Primary = cloth, secondary = embroidery. The front V is open,
+ * so the top worn underneath shows. Every arm/torso pixel of every frame is under it (checked in main()).
+ */
+const PONCHO_TOP: Record<SheetDir, number> = { down: 45, up: 45, left: 46 };
+const PONCHO: Record<SheetDir, string[]> = {
+  down: [
+    ".......###............###.......",
+    "......#33ca..........ac33#......",
+    ".....#322cac........cac223#.....",
+    "....#32222cac......cac22223#....",
+    "....#222222cac....cac222222#....",
+    "....#2222222cac..cac2222222#....",
+    "....#22222222caccac22222222#....",
+    "....#122222222caac222222221#....",
+    "....#1222222222cc2222222221#....",
+    "....#12c2c2c2c2cc2c2c2c2c21#....",
+    "....#bbabbabbabbbbabbabbabb#....",
+    ".....######################.....",
+  ],
+  up: [
+    ".......###............###.......",
+    "......#33ca..........ac33#......",
+    ".....#322cac22222222cac223#.....",
+    "....#32222cac222222cac22223#....",
+    "....#222222cac2222cac222222#....",
+    "....#2222222cac22cac2222222#....",
+    "....#22222222caccac22222222#....",
+    "....#122222222caac222222221#....",
+    "....#1222222222cc2222222221#....",
+    "....#12c2c2c2c2cc2c2c2c2c21#....",
+    "....#bbabbabbabbbbabbabbabb#....",
+    ".....######################.....",
+  ],
+  left: [
+    "..........###cac22##............",
+    ".........#2cac222332#...........",
+    "........#2cac22223322#..........",
+    "........#cac2222222222#.........",
+    "........#ac22222222222#.........",
+    "........#c222222122222#.........",
+    "........#2222222122222#.........",
+    "........#2222222122221#.........",
+    "........#2c2c2c2c2c2c1#.........",
+    "........#bbabbabbabbab#.........",
+    ".........#############..........",
+  ],
+};
 
 /** Side view: columns of the head (from its front edge) that stay face; hair fills everything behind. */
 const SIDE_FACE_W = 8;
@@ -688,6 +925,24 @@ function footwear(f: Frame, shaft: number) {
   f.recolor("primary", (c, x, y) => c === C.FOOT || (shaft > 0 && c === C.LEG && inShaft(x, y)));
   // sole: bottom foot pixel of each column
   f.recolor("secondary", (c, x, y) => c === C.FOOT && !isFoot(x, y + 1));
+}
+
+/** The poncho is a fixed shape over an animated body: fail if an arm or the torso ever sticks out of it. */
+function ponchoCoversBody() {
+  for (const anim of ANIM_ORDER as AnimName[])
+    for (const dir of SHEET_DIRS)
+      for (let i = 0; i < ANIMS[anim].frames; i++) {
+        const p = pose(dir, anim, i);
+        const { cls } = classes(p);
+        const top = PONCHO_TOP[dir] + p.m.bodyDy;
+        for (let y = 0; y < FRAME_H; y++)
+          for (let x = 0; x < FRAME_W; x++) {
+            const c = cls[y * FRAME_W + x]!;
+            if (c !== C.ARM && c !== C.HAND) continue; // the chest shows through the open V on purpose
+            const row = PONCHO[dir][y - top];
+            if (!row || row[x] === ".") throw new Error(`poncho: ${anim}_${dir} #${i} leaves the body uncovered at ${x},${y}`);
+          }
+      }
 }
 
 function buildSheet(drawer: Drawer): Canvas {
@@ -902,6 +1157,7 @@ function main() {
       }
       save(buildSheet(drawer), path.join("characters", part.sheet));
     }
+  ponchoCoversBody();
   fs.mkdirSync(path.join(OUT, "characters"), { recursive: true });
   fs.copyFileSync(path.join(ROOT, "art/characters/items.json"), path.join(OUT, "characters/items.json"));
 

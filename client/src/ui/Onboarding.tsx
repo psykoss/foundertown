@@ -3,6 +3,7 @@
  * you found it. Full screen, in the game's own look: your character stands in the office on the left
  * (name tag and picked answers update live), the questions are on the right with pixel icons.
  * Shown before the first session, and again from the profile card to edit the answers.
+ * The first time, the avatar builder follows the questions as the last step before the town.
  * The questions themselves are data in `@ft/shared` (founder.ts).
  */
 import { useState } from "react";
@@ -10,12 +11,14 @@ import { X } from "lucide-react";
 import { BUILDING_MAX, EMPTY_FOUNDER, GOALS, HEARD, NAME_MAX, STAGES, type FounderProfile, type Option } from "@ft/shared";
 import { saveFounder } from "../net/session";
 import { persistProfile, store, useStore } from "../state/store";
+import { EditAvatar } from "./EditAvatar";
 import { PixelIcon } from "./PixelIcon";
 import { Logo } from "./Shell";
 import { TownScene } from "./TownScene";
 
 const TITLES = ["Welcome to Founder Town", "What brings you here?", "One last thing"];
-const STEPS = TITLES.length;
+/** Step after the questions (first time only): the avatar builder. */
+const AVATAR_STEP = TITLES.length;
 
 /** Option tiles. `stacked` puts the icon above the text (3-column grids); otherwise it sits to the left. */
 function Choices({ options, picked, onPick, stacked = false }: { options: Option[]; picked: (id: string) => boolean; onPick: (id: string) => void; stacked?: boolean }) {
@@ -42,15 +45,18 @@ export function Onboarding({ edit = false }: { edit?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const avatar = useStore((s) => s.avatar);
+  const registry = useStore((s) => s.registry);
 
   const close = () => store.set({ modal: null });
   const investor = f.stage === "investor";
-  const canNext = [name.trim().length > 0 && !!f.stage, f.goals.length > 0, true][step]!;
-  const last = step === STEPS - 1;
+  const canNext = [name.trim().length > 0 && !!f.stage, f.goals.length > 0, true][step] ?? true;
+  const steps = edit ? TITLES.length : TITLES.length + 1;
+  const last = step === steps - 1;
 
   const next = async () => {
     if (!canNext || busy) return;
     if (!last) return setStep(step + 1);
+    setError(null);
     setBusy(true);
     const failed = await saveFounder(name, { ...f, building: f.building.trim() });
     setBusy(false);
@@ -61,6 +67,13 @@ export function Onboarding({ edit = false }: { edit?: boolean }) {
   };
 
   const toggleGoal = (id: string) => setF({ ...f, goals: f.goals.includes(id) ? f.goals.filter((g) => g !== id) : [...f.goals, id] });
+
+  if (step === AVATAR_STEP)
+    return registry ? (
+      <EditAvatar intro={{ name: name.trim() || "You", busy, error, onBack: () => (setError(null), setStep(step - 1)), onDone: () => void next() }} />
+    ) : (
+      <div className="screen"><div className="loading">Loading Founder Town…</div></div>
+    );
 
   return (
     <div className="ob">
@@ -77,7 +90,7 @@ export function Onboarding({ edit = false }: { edit?: boolean }) {
       <form className="ob-panel" aria-label="About you" onSubmit={(e) => (e.preventDefault(), void next())}>
         <header className="ob-head">
           <span className="ob-logo"><Logo size={22} /></span>
-          <span className="steps" aria-label={`Step ${step + 1} of ${STEPS}`}>{TITLES.map((_, i) => <i key={i} className={i <= step ? "on" : ""} />)}</span>
+          <span className="steps" aria-label={`Step ${step + 1} of ${steps}`}>{Array.from({ length: steps }, (_, i) => <i key={i} className={i <= step ? "on" : ""} />)}</span>
           {edit && <button type="button" className="icon-btn plain" aria-label="Close" onClick={close}><X size={20} /></button>}
         </header>
 
@@ -123,7 +136,7 @@ export function Onboarding({ edit = false }: { edit?: boolean }) {
 
         <footer className="ob-foot">
           {step > 0 && <button type="button" className="btn outline" onClick={() => setStep(step - 1)}>Back</button>}
-          <button type="submit" className="btn primary" disabled={!canNext || busy}>{!last ? "Continue" : edit ? "Save" : "Enter Founder Town"}</button>
+          <button type="submit" className="btn primary" disabled={!canNext || busy}>{last ? "Save" : "Continue"}</button>
         </footer>
       </form>
     </div>

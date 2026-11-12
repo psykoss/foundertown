@@ -2,6 +2,7 @@
  * Enforces the pixel spec on every asset. Fails (exit 1) on any violation.
  *   - character sheets: exact template size, idle/walk frames present, colors ∈ key ramps + fixed colors,
  *     no semi-transparency except the shadow layer
+ *   - item default colors and the starter characters only use items and ramps that exist
  *   - furniture/tilesets: colors ∈ master palette
  *   - map: every gid resolves, required layers exist, at least one spawn
  */
@@ -11,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { Canvas } from "./lib/pixel.js";
 import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, SHEET_H, SHEET_W, sheetRow,
-  KEY_RAMPS, FIXED_COLORS, masterPalette, LAYERS, SLOTS,
+  KEY_RAMPS, FIXED_COLORS, masterPalette, LAYERS, SLOTS, STARTERS, rampLibraryFor,
   type ItemRegistry, type TiledMap,
 } from "../shared/src/index.js";
 
@@ -53,6 +54,8 @@ for (const item of reg.items) {
   if (ids.has(item.id)) err(`items.json: duplicate id ${item.id}`);
   ids.add(item.id);
   if (!SLOTS.includes(item.slot)) err(`items.json: ${item.id} has unknown slot ${item.slot}`);
+  for (const ramp of Object.values(item.defaults ?? {}))
+    if (!rampLibraryFor(item.slot)[ramp]) err(`items.json: ${item.id} defaults to unknown color "${ramp}"`);
   for (const part of [...item.parts, ...(item.partsUnderHat ?? [])]) {
     if (!LAYERS.includes(part.layer)) err(`items.json: ${item.id} unknown layer ${part.layer}`);
     const file = path.join(A, "characters", part.sheet);
@@ -73,6 +76,16 @@ for (const item of reg.items) {
             if (frameEmpty(c, f, sheetRow(anim, dir))) err(`${part.sheet}: empty frame ${anim}_${dir} #${f}`);
   }
 }
+
+// starter characters: every slot wears a real, unlocked item of that slot in a real color
+for (const st of STARTERS)
+  for (const slot of SLOTS) {
+    const c = st.avatar.slots[slot];
+    if (!c) continue;
+    const item = reg.items.find((i) => i.id === c.id);
+    if (!item || item.slot !== slot || item.unlock) err(`starter ${st.id}: ${slot} wears ${c.id}, which is missing, locked or in another slot`);
+    for (const ramp of [c.primary, c.secondary]) if (ramp && !rampLibraryFor(slot)[ramp]) err(`starter ${st.id}: ${slot} uses unknown color "${ramp}"`);
+  }
 
 // ── environment ──
 for (const dir of ["tilesets", "furniture"]) {

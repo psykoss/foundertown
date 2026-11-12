@@ -1,11 +1,13 @@
 /**
  * Edit Avatar dialog: categories on the left, items + colors in the middle, live preview on the right.
  * Edits a draft; the preview and every thumbnail use the SAME compositor as the game.
+ * With `intro` it is the last step of the first-time onboarding: a full screen instead of a dialog over
+ * the game, opening on the starter characters, with Back / Enter instead of Cancel / Done.
  */
 import { useMemo, useState } from "react";
 import { Dices, Download, Lock, X } from "lucide-react";
 import {
-  OPTIONAL_SLOTS, SKIN_RAMPS, avatarKey, randomAvatar, rampLibraryFor, sanitizeAvatar,
+  OPTIONAL_SLOTS, SKIN_RAMPS, STARTERS, avatarKey, randomAvatar, rampLibraryFor, sanitizeAvatar,
   type Avatar, type Dir, type ItemDef, type Slot,
 } from "@ft/shared";
 import { persistAvatar, store, useStore } from "../state/store";
@@ -22,6 +24,8 @@ interface Category {
 }
 
 const CATEGORIES: Category[] = [
+  // ready-made characters (`STARTERS`), not items of a slot
+  { id: "character", label: "Character", slot: "body", crop: CROP.full, tileScale: 2 },
   { id: "skin", label: "Skin", slot: "face", crop: CROP.head, tileScale: 3 },
   { id: "hair", label: "Hair", slot: "hair", crop: CROP.head, tileScale: 3 },
   { id: "top", label: "Top", slot: "top", crop: CROP.torso, tileScale: 3 },
@@ -37,17 +41,28 @@ const DIRS: Dir[] = ["down", "left", "up", "right"];
 /** Skin's main fill is its lightest shade; cloth and hair use the one below. */
 const swatchColor = (ramp: readonly string[], skin: boolean) => (skin ? ramp[3] : ramp[2]);
 
-export function EditAvatar() {
+export interface AvatarIntro {
+  /** Name typed in the questions (not saved yet). */
+  name: string;
+  busy: boolean;
+  error: string | null;
+  onBack: () => void;
+  onDone: () => void;
+}
+
+export function EditAvatar({ intro }: { intro?: AvatarIntro }) {
   const registry = useStore((s) => s.registry)!;
   const saved = useStore((s) => s.avatar);
-  const name = useStore((s) => s.playerName);
+  const savedName = useStore((s) => s.playerName);
+  const name = intro?.name ?? savedName;
   const [draft, setDraft] = useState<Avatar>(() => sanitizeAvatar(saved, registry));
-  const [catId, setCatId] = useState("skin");
+  const [catId, setCatId] = useState(intro ? "character" : "skin");
   const [dir, setDir] = useState<Dir>("down");
 
   const cat = CATEGORIES.find((c) => c.id === catId)!;
   const slot = cat.slot;
   const isSkin = cat.id === "skin";
+  const isCharacter = cat.id === "character";
   const items = useMemo(() => registry.items.filter((i) => i.slot === slot), [registry, slot]);
   const choice = draft.slots[slot] ?? null;
   const item = choice ? registry.items.find((i) => i.id === choice.id) : undefined;
@@ -56,27 +71,41 @@ export function EditAvatar() {
 
   const setSlot = (patch: Partial<Avatar["slots"]>) => setDraft((d) => ({ ...d, slots: { ...d.slots, ...patch } }));
 
-  /** The draft wearing `it` in the current slot (keeps the colors already chosen for that slot). */
+  /**
+   * The draft wearing `it` in the current slot: in the item's own colors when it has some and is not
+   * already on, otherwise in the colors already chosen for that slot.
+   */
   const wearing = (it: ItemDef): Avatar => {
     const lib = Object.keys(rampLibraryFor(slot));
+    const own = choice?.id === it.id ? undefined : it.defaults;
     return {
       ...draft,
       slots: {
         ...draft.slots,
         [slot]: {
           id: it.id,
-          primary: it.channels.includes("primary") ? (choice?.primary ?? lib[0]) : undefined,
-          secondary: it.channels.includes("secondary") ? (choice?.secondary ?? lib[1]) : undefined,
+          primary: it.channels.includes("primary") ? (own?.primary ?? choice?.primary ?? lib[0]) : undefined,
+          secondary: it.channels.includes("secondary") ? (own?.secondary ?? choice?.secondary ?? lib[1]) : undefined,
         },
       },
     };
   };
+  /** A starter character in the skin tone already picked. */
+  const starting = (a: Avatar): Avatar => ({ ...a, skin: draft.skin });
 
   const close = () => store.set((s) => ({ modal: s.avatarReturn, avatarReturn: null }));
-  const done = () => {
+  const keep = () => {
     store.set({ avatar: draft });
     persistAvatar(draft);
-    close();
+  };
+  const done = () => {
+    keep();
+    if (intro) intro.onDone();
+    else close();
+  };
+  const back = () => {
+    keep(); // the character made so far is still there when they come back
+    intro?.onBack();
   };
   const download = async () => {
     const a = document.createElement("a");
@@ -87,7 +116,7 @@ export function EditAvatar() {
 
   const colorRows: { key: string; label: string; ramps: Record<string, readonly string[]>; value: string | undefined; pick: (k: string) => void }[] = isSkin
     ? [{ key: "skin", label: "Skin tone", ramps: SKIN_RAMPS, value: draft.skin, pick: (k) => setDraft((d) => ({ ...d, skin: k })) }]
-    : (item?.channels ?? [])
+    : (isCharacter ? [] : (item?.channels ?? []))
         .filter((c): c is "primary" | "secondary" => c !== "skin")
         .map((ch) => ({
           key: ch,
@@ -97,12 +126,14 @@ export function EditAvatar() {
           pick: (k: string) => choice && setSlot({ [slot]: { ...choice, [ch]: k } }),
         }));
 
+  const title = intro ? "Create your character" : "Edit Avatar";
+
   return (
-    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="dialog edit-avatar" role="dialog" aria-label="Edit Avatar">
+    <div className={intro ? "screen" : "backdrop"} onMouseDown={(e) => !intro && e.target === e.currentTarget && close()}>
+      <div className="dialog edit-avatar" role="dialog" aria-label={title}>
         <header className="dialog-head">
-          <h2>Edit Avatar</h2>
-          <button className="icon-btn plain" aria-label="Close" onClick={close}><X size={20} /></button>
+          <h2>{title}</h2>
+          {!intro && <button className="icon-btn plain" aria-label="Close" onClick={close}><X size={20} /></button>}
         </header>
 
         <div className="avatar-body">
@@ -117,7 +148,17 @@ export function EditAvatar() {
 
           <div className="avatar-pick">
             <div className="avatar-grid">
-              {items.map((it) => {
+              {isCharacter && STARTERS.map((st) => {
+                const on = avatarKey(draft) === avatarKey(sanitizeAvatar(starting(st.avatar), registry));
+                return (
+                  <div key={st.id} className="tile-wrap">
+                    <button className={"tile" + (on ? " on" : "")} aria-pressed={on} title={st.name} onClick={() => setDraft(sanitizeAvatar(starting(st.avatar), registry))}>
+                      <AvatarSprite avatar={starting(st.avatar)} crop={cat.crop} scale={cat.tileScale} />
+                    </button>
+                  </div>
+                );
+              })}
+              {!isCharacter && items.map((it) => {
                 const on = choice?.id === it.id;
                 return (
                   <div key={it.id} className="tile-wrap">
@@ -137,7 +178,7 @@ export function EditAvatar() {
                   </div>
                 );
               })}
-              {!items.length && <p className="empty">Nothing here yet.</p>}
+              {!isCharacter && !items.length && <p className="empty">Nothing here yet.</p>}
             </div>
             {colorRows.map((row) => (
               <div key={row.key} className="avatar-colors" role="group" aria-label={row.label}>
@@ -159,8 +200,18 @@ export function EditAvatar() {
         </div>
 
         <footer className="dialog-foot">
-          <button className="btn outline" onClick={close}>Cancel</button>
-          <button className="btn primary" disabled={!dirty} onClick={done}>Done</button>
+          {intro?.error && <p className="field-error foot-error" role="alert">{intro.error}</p>}
+          {intro ? (
+            <>
+              <button className="btn outline" onClick={back}>Back</button>
+              <button className="btn primary" disabled={intro.busy} onClick={done}>Enter Founder Town</button>
+            </>
+          ) : (
+            <>
+              <button className="btn outline" onClick={close}>Cancel</button>
+              <button className="btn primary" disabled={!dirty} onClick={done}>Done</button>
+            </>
+          )}
         </footer>
       </div>
     </div>

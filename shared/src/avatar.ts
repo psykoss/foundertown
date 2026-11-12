@@ -82,6 +82,8 @@ export interface ItemDef {
   partsUnderHat?: ItemPart[];
   /** Which key ramps this item uses (besides skin, which always follows the avatar skin). */
   channels: Channel[];
+  /** Colors the item is first worn in (ramp names); without them it keeps the colors already picked for its slot. */
+  defaults?: { primary?: string; secondary?: string };
   tags?: string[];
   /** Locked items are unlocked by gameplay (rewards). */
   unlock?: string;
@@ -124,6 +126,26 @@ export const DEFAULT_AVATAR: Avatar = {
   },
 };
 
+/** Ready-made characters to start from in the avatar builder. Every item they wear must be unlocked. */
+export const STARTERS: { id: string; name: string; avatar: Avatar }[] = [
+  { id: "starter_01", name: "Short hair", avatar: DEFAULT_AVATAR },
+  {
+    id: "starter_02",
+    name: "Long hair",
+    avatar: {
+      skin: "light",
+      slots: {
+        ...DEFAULT_AVATAR.slots,
+        face: { id: "face_02" },
+        hair: { id: "hair_long_02", primary: "brown" },
+        top: { id: "top_longsleeve_01", primary: "coral", secondary: "white" },
+        bottom: { id: "bottom_skirt_01", primary: "navy" },
+        shoes: { id: "shoes_boots_01", primary: "brown", secondary: "charcoal" },
+      },
+    },
+  },
+];
+
 /** Ramp library a channel draws from, depending on slot. */
 export function rampLibraryFor(slot: Slot): Record<string, Ramp> {
   return slot === "hair" ? HAIR_RAMPS : CLOTH_RAMPS;
@@ -150,7 +172,7 @@ export function avatarKey(a: Avatar): string {
   return parts.join("|");
 }
 
-/** Random avatar from unlocked items (NPCs, testing). `rand` returns [0,1). */
+/** Random avatar from unlocked items (the builder's dice, testing). `rand` returns [0,1). */
 export function randomAvatar(reg: ItemRegistry, rand: () => number = Math.random): Avatar {
   const pick = <T>(xs: T[]): T => xs[Math.floor(rand() * xs.length)]!;
   const skins = Object.keys(SKIN_RAMPS);

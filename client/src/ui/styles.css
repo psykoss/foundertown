@@ -257,6 +257,7 @@ button:disabled { cursor: not-allowed; }
 .dialog-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
 .dialog-body { padding: 20px; overflow: auto; }
+.dialog-foot .foot-error { flex: 1; margin: 0; align-self: center; text-align: left; padding-left: 8px; }
 
 .edit-profile { width: 360px; max-width: 100%; }
 .profile-pair { display: flex; justify-content: space-around; margin-bottom: 14px; }

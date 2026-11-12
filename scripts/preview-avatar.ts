@@ -10,7 +10,7 @@ import { Canvas } from "./lib/pixel.js";
 import {
   itemParts,
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, sheetRow,
-  LAYER_ORDER, DEFAULT_AVATAR, SLOTS, resolveRamp, skinRamp,
+  LAYER_ORDER, DEFAULT_AVATAR, STARTERS, SLOTS, resolveRamp, skinRamp,
   buildSwapTable, swapPixels, type Avatar, type ItemRegistry, type Layer, type Ramp, type SlotChoice,
 } from "../shared/src/index.js";
 
@@ -75,6 +75,9 @@ const looks: Record<string, Avatar> = {
   swept_cap: { ...DEFAULT_AVATAR, slots: { ...DEFAULT_AVATAR.slots, hair: { id: "hair_swept_01", primary: "brown" }, headwear: { id: "head_cap_01", primary: "coral", secondary: "navy" } } },
   hoodie: { skin: "brown", slots: { ...DEFAULT_AVATAR.slots, hair: { id: "hair_long_01", primary: "black" }, outerwear: { id: "outer_hoodie_01", primary: "mustard", secondary: "white" }, bottom: { id: "bottom_skirt_01", primary: "charcoal" }, shoes: { id: "shoes_boots_01", primary: "charcoal", secondary: "beige" }, back_accessory: { id: "backpack_01", primary: "green", secondary: "teal" } } },
   founder: { skin: "porcelain", slots: { ...DEFAULT_AVATAR.slots, hair: { id: "hair_bun_01", primary: "blonde" }, top: { id: "top_longsleeve_01", primary: "white", secondary: "navy" }, outerwear: { id: "outer_blazer_01", primary: "lavender", secondary: "white" }, face_accessory: { id: "glasses_01" }, bottom: { id: "bottom_pants_01", primary: "charcoal" } } },
+  long: STARTERS[1]!.avatar,
+  cowgirl: { skin: "light", slots: { ...STARTERS[1]!.avatar.slots, hair: { id: "hair_long_02", primary: "black" }, top: { id: "top_tee_01", primary: "charcoal" }, bottom: { id: "bottom_pants_01", primary: "navy" }, outerwear: { id: "outer_poncho_01", primary: "white", secondary: "purple" }, headwear: { id: "head_cowgirl_01", primary: "brown", secondary: "charcoal" }, face_accessory: { id: "glasses_01" } } },
+  poncho: { skin: "tan", slots: { ...DEFAULT_AVATAR.slots, outerwear: { id: "outer_poncho_01", primary: "coral", secondary: "navy" }, headwear: { id: "head_cowgirl_01", primary: "white", secondary: "coral" }, back_accessory: { id: "backpack_01", primary: "green", secondary: "teal" } } },
   cap: { skin: "deep", slots: { ...DEFAULT_AVATAR.slots, headwear: { id: "head_cap_01", primary: "coral", secondary: "navy" }, bottom: { id: "bottom_shorts_01", primary: "beige" }, top: { id: "top_tee_01", primary: "purple" } } },
 };
 

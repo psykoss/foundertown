@@ -5,6 +5,8 @@
       "parts": [{ "layer": "shadow", "sheet": "body/shadow_01.png" }, { "layer": "body", "sheet": "body/body_01.png" }, { "layer": "head", "sheet": "body/head_01.png" }] },
     { "id": "face_01", "slot": "face", "name": "Default face", "channels": [],
       "parts": [{ "layer": "face", "sheet": "face/face_01.png" }] },
+    { "id": "face_02", "slot": "face", "name": "Lashes", "channels": [],
+      "parts": [{ "layer": "face", "sheet": "face/face_02.png" }] },
 
     { "id": "hair_short_01", "slot": "hair", "name": "Short", "channels": ["primary"],
       "parts": [{ "layer": "hair_front", "sheet": "hair/hair_short_01.png" }] },
@@ -13,6 +15,9 @@
       "partsUnderHat": [{ "layer": "hair_front", "sheet": "hair/hair_swept_01_hat.png" }] },
     { "id": "hair_long_01", "slot": "hair", "name": "Long", "channels": ["primary"],
       "parts": [{ "layer": "hair_back", "sheet": "hair/hair_long_01_back.png" }, { "layer": "hair_front", "sheet": "hair/hair_long_01_front.png" }] },
+    { "id": "hair_long_02", "slot": "hair", "name": "Long waves", "channels": ["primary"],
+      "parts": [{ "layer": "hair_front", "sheet": "hair/hair_long_02.png" }],
+      "partsUnderHat": [{ "layer": "hair_front", "sheet": "hair/hair_long_02_hat.png" }] },
     { "id": "hair_bun_01", "slot": "hair", "name": "Bun", "channels": ["primary"],
       "parts": [{ "layer": "hair_front", "sheet": "hair/hair_bun_01.png" }] },
 
@@ -25,6 +30,9 @@
       "parts": [{ "layer": "outerwear", "sheet": "outerwear/outer_hoodie_01.png" }] },
     { "id": "outer_blazer_01", "slot": "outerwear", "name": "Blazer", "channels": ["primary", "secondary"],
       "parts": [{ "layer": "outerwear", "sheet": "outerwear/outer_blazer_01.png" }], "tags": ["formal"] },
+    { "id": "outer_poncho_01", "slot": "outerwear", "name": "Peruvian poncho", "channels": ["primary", "secondary"],
+      "defaults": { "primary": "white", "secondary": "purple" },
+      "parts": [{ "layer": "outerwear", "sheet": "outerwear/outer_poncho_01.png" }] },
 
     { "id": "bottom_pants_01", "slot": "bottom", "name": "Pants", "channels": ["primary"],
       "parts": [{ "layer": "bottom", "sheet": "bottom/bottom_pants_01.png" }] },
@@ -41,7 +49,10 @@
     { "id": "head_cap_01", "slot": "headwear", "name": "Cap", "channels": ["primary", "secondary"],
       "parts": [{ "layer": "headwear", "sheet": "headwear/head_cap_01.png" }] },
     { "id": "head_beanie_01", "slot": "headwear", "name": "Beanie", "channels": ["primary", "secondary"],
-      "parts": [{ "layer": "headwear", "sheet": "headwear/head_beanie_01.png" }], "unlock": "pill:shipol" },
+      "parts": [{ "layer": "headwear", "sheet": "headwear/head_beanie_01.png" }] },
+    { "id": "head_cowgirl_01", "slot": "headwear", "name": "Calgary cowgirl hat", "channels": ["primary", "secondary"],
+      "defaults": { "primary": "brown", "secondary": "charcoal" },
+      "parts": [{ "layer": "headwear", "sheet": "headwear/head_cowgirl_01.png" }] },
 
     { "id": "glasses_01", "slot": "face_accessory", "name": "Glasses", "channels": [],
       "parts": [{ "layer": "face_accessory", "sheet": "face_accessory/glasses_01.png" }] },

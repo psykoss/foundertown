@@ -60,6 +60,7 @@ export const CLOTH_RAMPS: Record<string, Ramp> = {
   mustard: ["#c28433", "#efa948", "#f7d674", "#f9dbc2"],
   coral: ["#7b4e41", "#c25a52", "#e86c67", "#f3a7a0"],
   tan: ["#7b4e41", "#9f6e5c", "#cfa17e", "#e0b693"],
+  brown: ["#3a1e12", "#62341e", "#875c40", "#a97d60"], // dark leather / felt (colors already in the palette)
 };
 
 /** Fixed (non-recolorable) colors allowed in character art. */
