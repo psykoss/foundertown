@@ -9,8 +9,10 @@ export const SERVER_URL: string = (e.VITE_SERVER_URL ?? `${location.protocol}//$
 
 /**
  * STUN finds a direct route between two browsers; it is enough on most home networks.
- * Add a TURN server (JSON array of RTCIceServer in VITE_ICE_SERVERS) so calls also work behind strict firewalls.
+ * TURN (for strict firewalls) normally comes from the server's `GET /ice` (Cloudflare Realtime, see `net/voice.ts`);
+ * VITE_ICE_SERVERS (JSON array of RTCIceServer) overrides both with a fixed list.
  */
+export const ICE_OVERRIDE = !!e.VITE_ICE_SERVERS;
 export const ICE_SERVERS: RTCIceServer[] = e.VITE_ICE_SERVERS
   ? (JSON.parse(e.VITE_ICE_SERVERS) as RTCIceServer[])
   : [{ urls: "stun:stun.l.google.com:19302" }];

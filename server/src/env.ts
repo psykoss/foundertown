@@ -25,6 +25,9 @@ export const env = {
   /** Invite emails (https://resend.com). Without a key the client falls back to a mailto: link. */
   resendKey: e.RESEND_API_KEY ?? "",
   mailFrom: e.MAIL_FROM ?? "Founder Town <onboarding@resend.dev>",
+  /** Cloudflare Realtime TURN key (`GET /ice` hands out short-lived credentials). Without it calls use STUN only. */
+  turnKeyId: e.CLOUDFLARE_TURN_KEY_ID ?? "",
+  turnApiToken: e.CLOUDFLARE_TURN_API_TOKEN ?? "",
   /** Tiled map the room validates movement against (the same file the client renders). */
   mapPath: e.MAP_PATH ?? fileURLToPath(new URL("../../client/public/assets/maps/town.tmj", import.meta.url)),
 };

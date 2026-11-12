@@ -2,6 +2,7 @@
 import { Server, WebSocketTransport } from "colyseus";
 import { ROOM } from "@ft/shared";
 import { env, supabaseConfigured } from "./env.js";
+import { handleIce } from "./ice.js";
 import { handleInvite } from "./invites.js";
 import { TownRoom } from "./TownRoom.js";
 
@@ -11,6 +12,14 @@ const server = new Server({
   transport: new WebSocketTransport({ maxPayload: 32 * 1024 }),
   express: (app) => {
     app.get("/health", (_req, res) => void res.json({ ok: true }));
+    app.use("/ice", (req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", env.appUrl);
+      res.setHeader("Access-Control-Allow-Headers", "Authorization");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      if (req.method === "OPTIONS") return void res.writeHead(204).end();
+      if (req.method !== "GET") return void res.writeHead(405).end();
+      void handleIce(req, res);
+    });
     app.use("/invites", (req, res) => {
       res.setHeader("Access-Control-Allow-Origin", env.appUrl);
       res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");

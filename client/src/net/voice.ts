@@ -12,8 +12,9 @@
  */
 import { VOICE, tileDistance, voiceVolume, type CallKind, type RtcData } from "@ft/shared";
 import { store, type Calls } from "../state/store";
-import { ICE_SERVERS } from "./config";
+import { ICE_SERVERS, ICE_OVERRIDE, SERVER_URL } from "./config";
 import { onCall, onRtc, sendCall, sendMedia, sendRtc } from "./room";
+import { getToken } from "./session";
 
 type Kind = "audio" | "video";
 
@@ -110,11 +111,30 @@ interface Peer {
 }
 const peers = new Map<string, Peer>();
 
+/**
+ * STUN until the server hands out TURN credentials (`GET /ice`, Cloudflare Realtime). They last a
+ * day, so they are refreshed every 12 h; new connections use the latest set, open ones are updated.
+ */
+let iceServers: RTCIceServer[] = ICE_SERVERS;
+const ICE_REFRESH_MS = 12 * 60 * 60 * 1000;
+async function refreshIce() {
+  try {
+    const token = await getToken();
+    const res = await fetch(`${SERVER_URL}/ice`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const body = (await res.json()) as { iceServers: RTCIceServer[] | null };
+    if (!body.iceServers?.length) return;
+    iceServers = body.iceServers;
+    for (const { pc } of peers.values()) pc.setConfiguration({ ...pc.getConfiguration(), iceServers });
+  } catch {
+    /* keep what we have; calls on open networks still work over STUN */
+  }
+}
+
 const sender = (pc: RTCPeerConnection, kind: Kind) => pc.getTransceivers().find((t) => t.receiver.track.kind === kind)?.sender;
 
 /** Connect to a player: with `offer` we answer theirs, without we make ours. */
 function open(id: string, offer?: RTCSessionDescriptionInit) {
-  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  const pc = new RTCPeerConnection({ iceServers });
   const audio = new Audio();
   audio.autoplay = true;
   peers.set(id, { pc, audio });
@@ -262,6 +282,10 @@ function onCallSignal(from: string, kind: CallKind) {
 
 /** Start listening for peers and calls. Call once, when the game starts. */
 export function startVoice() {
+  if (!ICE_OVERRIDE) {
+    void refreshIce();
+    setInterval(() => void refreshIce(), ICE_REFRESH_MS);
+  }
   onRtc(onSignal);
   onCall(onCallSignal);
   setInterval(tick, 250);
