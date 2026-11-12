@@ -4,11 +4,12 @@
  */
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Check, Copy, DoorOpen, Link as LinkIcon, Mail, Maximize2, Mic, MicOff, Minimize2, Phone, PhoneOff, Video, X } from "lucide-react";
-import { GOALS, MAIN_LOBBY, STAGES, optionLabel } from "@ft/shared";
+import { MAIN_LOBBY, STAGES, optionLabel } from "@ft/shared";
 import { emailInvite, joinLobby, lobbyUrl } from "../net/room";
 import { acceptCall, declineCall, endCall, setMic, startCall } from "../net/voice";
 import { store, useStore } from "../state/store";
 import { AvatarSprite, CROP } from "./AvatarSprite";
+import { GoalChips } from "./PixelIcon";
 
 /** Lobby name, connection state and head count — top left of the frame. */
 export function LobbyChip() {
@@ -61,7 +62,7 @@ export function PlayerCard() {
       {(p.building || p.goals.length > 0) && (
         <div className="player-about">
           {p.building && <p>{p.building}</p>}
-          {p.goals.length > 0 && <div className="chips">{p.goals.map((g) => <span key={g} className="chip">{optionLabel(GOALS, g)}</span>)}</div>}
+          {p.goals.length > 0 && <GoalChips goals={p.goals} />}
         </div>
       )}
       <div className="profile-actions">

@@ -3,6 +3,8 @@
  * Each icon is a grid of palette letters ("." = empty) drawn as crisp SVG rects, so it stays
  * sharp at any size. Colors are the game's own ramps (`shared/src/palette.ts`).
  */
+import { GOALS, optionLabel } from "@ft/shared";
+
 const COLORS: Record<string, string> = {
   w: "#ffffff", W: "#d6d8e8", s: "#8995ab", S: "#626f7b", k: "#30325b",
   y: "#f7d674", a: "#efa948", A: "#c28433",
@@ -347,5 +349,19 @@ export function PixelIcon({ id, size = 36 }: { id: string; size?: number }) {
     <svg className="pixel-icon" width={size} height={size} viewBox={`0 0 ${SIZE} ${SIZE}`} shapeRendering="crispEdges" aria-hidden>
       {rects.map((r, i) => <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.fill} />)}
     </svg>
+  );
+}
+
+/** A founder's goals as chips: the onboarding icon at one screen pixel per art pixel, then the label. */
+export function GoalChips({ goals }: { goals: string[] }) {
+  return (
+    <div className="chips">
+      {goals.map((g) => (
+        <span key={g} className="chip">
+          <PixelIcon id={g} size={SIZE} />
+          {optionLabel(GOALS, g)}
+        </span>
+      ))}
+    </div>
   );
 }

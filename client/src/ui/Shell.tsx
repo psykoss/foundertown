@@ -8,11 +8,12 @@ import {
   Gift, Hammer, House, LampDesk, LogOut, Map as MapIcon, MessagesSquare, Mic, MicOff, Minus, Navigation, PanelLeft, Pencil, Plus,
   Search, Settings, Smile, Sprout, SquareDashed, SquarePen, User, UserPlus, Video, VideoOff, X,
 } from "lucide-react";
-import { GOALS, MAIN_LOBBY, STAGES, optionLabel } from "@ft/shared";
+import { MAIN_LOBBY, STAGES, optionLabel } from "@ft/shared";
 import { joinLobby } from "../net/room";
 import { authEnabled, signOut } from "../net/session";
 import { setCam, setMic } from "../net/voice";
 import { store, useStore } from "../state/store";
+import { GoalChips } from "./PixelIcon";
 
 const ICON = { size: 20, strokeWidth: 1.75 } as const;
 
@@ -202,7 +203,7 @@ export function ProfileCard() {
           <button className="icon-btn plain about-edit" aria-label="Edit founder profile" onClick={() => store.set({ popover: null, modal: "founder" })}><Pencil size={16} /></button>
           <div className="about-stage">{optionLabel(STAGES, founder.stage)}</div>
           {founder.building && <p>{founder.building}</p>}
-          <div className="chips">{founder.goals.map((g) => <span key={g} className="chip">{optionLabel(GOALS, g)}</span>)}</div>
+          <GoalChips goals={founder.goals} />
         </div>
       )}
     </div>
