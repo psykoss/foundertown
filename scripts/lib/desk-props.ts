@@ -5,6 +5,7 @@
  * `gen-placeholders.ts` writes them to assets/furniture and lists them in furniture.json.
  * Where they stand on a desk is `DESK_SETUP` in shared/src/office.ts.
  */
+import { hexToRgb } from "../../shared/src/palette.js";
 import { Canvas } from "./pixel.js";
 
 const BEZEL = "#2b2c2b", SCREEN = "#30325b";
@@ -26,38 +27,73 @@ function rounded(c: Canvas, x: number, y: number, w: number, h: number, color: s
   c.fill(x + 1, y + h - 1, w - 2, 1, color);
 }
 
-const MONITOR_W = 27;
-/** Height of a display's face, and of the whole prop (face + its lean + stand). */
-const FACE_H = 16;
-const MONITOR_H = 25;
-/** The displays are turned in toward the chair: their faces drop 1 px for every SLOPE px toward the outer edge. */
-const SLOPE = 4;
+/**
+ * The displays are turned 20° in toward the chair, like an open book facing whoever sits there.
+ * A 27 px wide display turned 20° shows cos 20° of its width; its outer edge comes forward, so it
+ * is drawn taller than the inner edge at the back — reaching a little higher, and lower still
+ * (we look down on the desk, so nearer also means lower).
+ */
+const FACE_W = 25;
+/** Height of the inner edge; the lit area behind the bezel is (FACE_W − 2) × (INNER_H − 2). */
+const INNER_H = 16;
+const LIT_W = FACE_W - 2;
+const LIT_H = INNER_H - 2;
+/** How much higher and lower the outer edge reaches than the inner one. */
+const RISE = 2;
+const DROP = 4;
+const MONITOR_H = RISE + INNER_H + DROP + 4;
 
 /**
- * One display on its stand, turned toward the chair. `lean` is the side that comes forward (the
- * outer one): seen from above and in front, that edge sits lower, so the face is drawn flat and
- * then slid down column by column. `screen` draws the lit 25×14 area at (1, 1) of the flat face.
+ * One display on its stand. `outer` is the side that comes forward. `screen` draws the flat lit
+ * area; it is then fitted column by column into the face, spread out toward the nearer edge.
  */
-function monitor(c: Canvas, ox: number, lean: "left" | "right", screen: (face: Canvas) => void) {
-  const face = new Canvas(MONITOR_W, FACE_H);
-  rounded(face, 0, 0, MONITOR_W, FACE_H, BEZEL);
-  face.fill(1, 1, 25, 14, SCREEN);
-  screen(face);
-  const drop = (x: number) => Math.floor((lean === "left" ? MONITOR_W - 1 - x : x) / SLOPE);
-  // stand first (the face hangs in front of the neck): a neck under the middle of the face and a flat foot, lit from the top left
-  const top = FACE_H + drop(13);
-  c.fill(ox + 11, top - 2, 5, 5, SILVER);
-  c.fill(ox + 15, top - 2, 1, 5, GREY);
-  c.fill(ox + 8, top + 3, 11, 1, SILVER_LIGHT);
-  c.fill(ox + 7, top + 4, 13, 1, SILVER);
-  c.fill(ox + 8, top + 5, 11, 1, GREY);
-  for (let x = 0; x < MONITOR_W; x++)
-    for (let y = 0; y < FACE_H; y++) {
-      const i = (y * MONITOR_W + x) * 4;
-      if (!face.data[i + 3]) continue;
-      const o = ((y + drop(x)) * c.w + ox + x) * 4;
-      for (let k = 0; k < 4; k++) c.data[o + k] = face.data[i + k]!;
+function monitor(c: Canvas, ox: number, outer: "left" | "right", screen: (lit: Canvas) => void) {
+  const lit = new Canvas(LIT_W, LIT_H);
+  lit.fill(0, 0, LIT_W, LIT_H, SCREEN);
+  screen(lit);
+  /** Top and bottom row of the face in a column (0 = left). */
+  const span = (col: number) => {
+    const t = (outer === "left" ? FACE_W - 1 - col : col) / (FACE_W - 1); // 0 at the inner edge … 1 at the outer
+    return { top: RISE - Math.round(RISE * t), bottom: RISE + INNER_H - 1 + Math.round(DROP * t) };
+  };
+  // stand first (the face hangs in front of the neck): a neck under the middle and a flat foot, lit from the top left
+  const mid = Math.floor(FACE_W / 2);
+  const under = span(mid).bottom;
+  c.fill(ox + mid - 2, under - 1, 5, 5, SILVER);
+  c.fill(ox + mid + 2, under - 1, 1, 5, GREY);
+  c.fill(ox + mid - 5, under + 4, 11, 1, SILVER_LIGHT);
+  c.fill(ox + mid - 6, under + 5, 13, 1, SILVER);
+  c.fill(ox + mid - 5, under + 6, 11, 1, GREY);
+  for (let col = 0; col < FACE_W; col++) {
+    const { top, bottom } = span(col);
+    const side = col === 0 || col === FACE_W - 1;
+    const rows = bottom - top - 1; // lit rows in this column
+    for (let y = top; y <= bottom; y++) {
+      const cap = y === top || y === bottom;
+      if (side && cap) continue; // rounded corner
+      if (side || cap) {
+        c.set(ox + col, y, BEZEL);
+        continue;
+      }
+      c.set(ox + col, y, SCREEN);
     }
+    if (side) continue;
+    // what is on the screen: each flat row lands where it falls in this (taller) column and stays one
+    // pixel thick; only shapes that run down the screen (bars, the file list) are filled in between
+    const at = (row: number) => top + 1 + Math.floor((row * rows) / LIT_H);
+    const pixel = (row: number) => (row < LIT_H ? lit.data.subarray((row * LIT_W + col - 1) * 4, (row * LIT_W + col - 1) * 4 + 3).join() : "");
+    const ground = hexToRgb(SCREEN).join();
+    for (let row = 0; row < LIT_H; row++) {
+      const color = pixel(row);
+      if (color === ground) continue;
+      const to = color === pixel(row + 1) ? at(row + 1) - 1 : at(row);
+      for (let y = at(row); y <= to; y++) {
+        const o = (y * c.w + ox + col) * 4;
+        const i = (row * LIT_W + col - 1) * 4;
+        for (let k = 0; k < 4; k++) c.data[o + k] = lit.data[i + k]!;
+      }
+    }
+  }
 }
 
 /** Window buttons, top left of a screen. */
@@ -67,14 +103,13 @@ function lights(c: Canvas, x: number, y: number) {
   c.set(x + 4, y, GREEN);
 }
 
-/** Two displays side by side, angled in toward the chair: code on the left, a dashboard on the right. */
+/** Two displays side by side, each turned 20° in toward the chair: code on the left, a dashboard on the right. */
 function dualMonitor(): Canvas {
-  const c = new Canvas(MONITOR_W * 2 + 1, MONITOR_H);
+  const c = new Canvas(FACE_W * 2 + 1, MONITOR_H);
   monitor(c, 0, "left", (f) => {
-    const x = 1, y = 1;
-    f.fill(x, y, 5, 14, BEZEL); // file list
-    for (const row of [3, 5, 7, 9]) f.fill(x + 1, y + row, 3, 1, GREY_DARK);
-    lights(f, x + 7, y + 1);
+    f.fill(0, 0, 4, LIT_H, BEZEL); // file list
+    for (const row of [3, 5, 7, 9]) f.fill(1, row, 2, 1, GREY_DARK);
+    lights(f, 5, 1);
     // lines of code: [row, indent, [length, color]…]
     const lines: [number, number, [number, string][]][] = [
       [3, 0, [[4, CORAL], [7, SKY]]],
@@ -85,26 +120,25 @@ function dualMonitor(): Canvas {
       [12, 0, [[2, CORAL]]],
     ];
     for (const [row, indent, parts] of lines) {
-      let px = x + 7 + indent;
+      let px = 5 + indent;
       for (const [len, color] of parts) {
-        f.fill(px, y + row, len, 1, color);
+        f.fill(px, row, len, 1, color);
         px += len + 1;
       }
     }
   });
-  monitor(c, MONITOR_W + 1, "right", (f) => {
-    const x = 1, y = 1;
-    lights(f, x + 1, y + 1);
-    f.fill(x + 9, y + 1, 8, 1, GREY_DARK); // title
+  monitor(c, FACE_W + 1, "right", (f) => {
+    lights(f, 1, 1);
+    f.fill(8, 1, 8, 1, GREY_DARK); // title
     // bars growing to the right over a baseline
-    [3, 5, 4, 7, 9].forEach((h, i) => f.fill(x + 2 + i * 2, y + 12 - h, 1, h, i === 4 ? GREEN : BLUE));
-    f.fill(x + 1, y + 12, 11, 1, GREY_DARK);
+    [3, 5, 4, 7, 9].forEach((h, i) => f.fill(2 + i * 2, 12 - h, 1, h, i === 4 ? GREEN : BLUE));
+    f.fill(1, 12, 11, 1, GREY_DARK);
     // figures down the right: plain rows, which stay readable on a face seen at an angle
-    f.fill(x + 14, y + 4, 4, 1, SKY);
-    f.fill(x + 14, y + 6, 9, 1, YELLOW);
-    f.fill(x + 14, y + 8, 6, 1, GREEN);
-    f.fill(x + 14, y + 10, 8, 1, SKY);
-    f.fill(x + 14, y + 12, 10, 1, GREY_DARK);
+    f.fill(13, 4, 4, 1, SKY);
+    f.fill(13, 6, 9, 1, YELLOW);
+    f.fill(13, 8, 6, 1, GREEN);
+    f.fill(13, 10, 8, 1, SKY);
+    f.fill(13, 12, 9, 1, GREY_DARK);
   });
   return c;
 }

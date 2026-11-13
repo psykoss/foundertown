@@ -215,13 +215,13 @@ interface Placement {
 
 const DESK_W = 3;
 /**
- * What stands on every desk: two monitors at the back angled toward the chair, the computer front
+ * What stands on every desk: two monitors at the back turned in toward the chair, the computer front
  * left, the keyboard in front of the chair, the mouse on its mat front right. `left` = px from the left edge of the desk's three tiles to the
  * prop's left edge; `dy` = px from the desk's base line up to the prop's base; `z` puts it over the desk.
  * The same list furnishes the desks of the town map (scripts/gen-map.ts).
  */
 export const DESK_SETUP: { prop: string; left: number; dy: number; z: number }[] = [
-  { prop: "dual_monitor", left: 21, dy: -26, z: 30 },
+  { prop: "dual_monitor", left: 23, dy: -26, z: 30 },
   { prop: "mac_mini", left: 13, dy: -14, z: 30 },
   { prop: "keyboard", left: 36, dy: -14, z: 30 },
   { prop: "mouse_mat", left: 61, dy: -12, z: 30 },

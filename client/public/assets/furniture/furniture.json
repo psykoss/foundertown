@@ -215,8 +215,8 @@
  {
   "name": "dual_monitor",
   "file": "office/dual_monitor.png",
-  "w": 55,
-  "h": 25,
+  "w": 51,
+  "h": 26,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
