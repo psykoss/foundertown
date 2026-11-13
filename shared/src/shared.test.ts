@@ -20,7 +20,7 @@ import {
   type TiledMap,
   sanitizeFounder, sanitizeName, isLobby, voiceVolume, BUILDING_MAX, MAIN_LOBBY, VOICE,
   weekDays, startOfWeek, monthDays, sameDay, layoutDay, dueReminders, sanitizeMeetings, MIN_BLOCK_MIN, type Meeting,
-  DEPARTMENTS, SPACE_MAX, SPACE_MIN, TILE, buildWorld, floorUsed, footprintOf, keepInside, mapOf, nearestFree, resizeSpace, sanitizeLayout, spaceAt, spaceFits,
+  DEPARTMENTS, DESK_SETUP, SPACE_MAX, SPACE_MIN, TILE, buildWorld, floorUsed, footprintOf, keepInside, mapOf, nearestFree, resizeSpace, sanitizeLayout, spaceAt, spaceFits,
   type Space,
 } from "./index.js";
 
@@ -238,7 +238,8 @@ describe("office", () => {
     ] }],
     tilesets: [
       { firstgid: 1, name: "terrain", tilewidth: 32, tileheight: 32, tilecount: 32, columns: 8, tiles: DEPARTMENTS.map((d, i) => ({ id: 10 + i, properties: [{ name: "floor", type: "string", value: d.id }] })) },
-      { firstgid: 33, name: "props", tilewidth: 160, tileheight: 160, tilecount: 5, columns: 0, tiles: [
+      { firstgid: 33, name: "props", tilewidth: 160, tileheight: 160, tilecount: 8, columns: 0, tiles: [
+        prop(5, "dual_monitor", 55, 22, 0, 0), prop(6, "mac_mini", 13, 10, 0, 0), prop(7, "mouse_mat", 21, 13, 0, 0),
         prop(0, "desk", 85, 37, 3, 1), prop(1, "office_chair", 22, 20, 0, 0, "up"), prop(2, "plant_tree", 36, 62, 1, 1), prop(3, "plant_small", 28, 46, 1, 1), prop(4, "plant_pot", 11, 13, 0, 0),
       ] },
     ],
@@ -337,6 +338,16 @@ describe("office", () => {
     expect(findPath(world.grid, { x: 6, y: 8 }, { x: 7, y: 8 })).toEqual([{ x: 7, y: 8 }]); // standing up and walking off
     expect(world.grid.isBlocked(5, 7)).toBe(true);
     expect(world.grid.isBlocked(4, 7)).toBe(false);
+    // every desk carries its computer, inside the desk's own outline (85×37 px, 6 px into its three tiles) and drawn over it
+    for (const desk of world.furniture.filter((f) => f.image === "desk.png")) {
+      const on = world.furniture.filter((f) => DESK_SETUP.some((d) => `${d.prop}.png` === f.image) && f.x >= desk.x && f.x + f.width <= desk.x + desk.width);
+      expect(on.map((f) => f.image).sort()).toEqual(["dual_monitor.png", "mac_mini.png", "mouse_mat.png"]);
+      for (const f of on) {
+        expect(f.y).toBeLessThanOrEqual(desk.y - 9); // on the desk top, not on its front edge
+        expect(f.y + f.z).toBeGreaterThan(desk.y);
+        expect(f.footprint).toEqual({ w: 0, h: 0 });
+      }
+    }
     // someone under a desk is moved to the nearest free tile; someone on free floor stays
     expect(nearestFree(world, 6, 7)).toEqual({ x: 6, y: 6 });
     expect(nearestFree(world, 4, 7)).toEqual({ x: 4, y: 7 });

@@ -17,6 +17,7 @@ import {
 import { ENV_RAMPS, FIXED_COLORS, KEY_RAMPS, hexToRgb, masterPalette } from "../shared/src/palette.js";
 import type { ItemRegistry } from "../shared/src/avatar.js";
 import { CHAIR_COLORS, TERRAIN, TERRAIN_COUNT, LIBRARY_FLOORS } from "./lib/env.js";
+import { deskProps } from "./lib/desk-props.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "client/public/assets");
@@ -1200,6 +1201,11 @@ function main() {
       out.save(path.join(OUT, "furniture", file));
       lib.props.push({ ...chair, name: `office_chair_${name}`, file });
     }
+  }
+  // Drawn props (scripts/lib/desk-props.ts): what stands on a desk. Nothing blocks, nothing is sat on.
+  for (const p of deskProps()) {
+    p.canvas.save(path.join(OUT, "furniture", p.file));
+    lib.props.push({ name: p.name, file: p.file, w: p.canvas.w, h: p.canvas.h, footprintW: 0, footprintH: 0 });
   }
   fs.writeFileSync(
     path.join(OUT, "furniture/furniture.json"),

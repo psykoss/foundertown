@@ -197,12 +197,16 @@ export function mapLibrary(map: TiledMap): MapLibrary {
   return { props, floors };
 }
 
-/** A prop standing in a space: on tile (tx, ty) of the space, centered across `span` tiles, nudged by (dx, dy) px. */
+/**
+ * A prop standing in a space: on tile (tx, ty) of the space, centered across `span` tiles (or with
+ * its left edge `left` px into them), nudged by (dx, dy) px.
+ */
 interface Placement {
   prop: string;
   tx: number;
   ty: number;
   span: number;
+  left?: number;
   dy: number;
   dx: number;
   /** Depth offset (things standing on a desk). */
@@ -210,6 +214,17 @@ interface Placement {
 }
 
 const DESK_W = 3;
+/**
+ * What stands on every desk: two monitors at the back facing the chair, the computer front left,
+ * the mouse on its mat front right. `left` = px from the left edge of the desk's three tiles to the
+ * prop's left edge; `dy` = px from the desk's base line up to the prop's base; `z` puts it over the desk.
+ * The same list furnishes the desks of the town map (scripts/gen-map.ts).
+ */
+export const DESK_SETUP: { prop: string; left: number; dy: number; z: number }[] = [
+  { prop: "dual_monitor", left: 21, dy: -26, z: 30 },
+  { prop: "mac_mini", left: 13, dy: -14, z: 30 },
+  { prop: "mouse_mat", left: 56, dy: -12, z: 30 },
+];
 /** A desk with its chair: 3 tiles wide, 2 deep (desk row, then the chair row). */
 const STATION_H = 2;
 
@@ -222,9 +237,10 @@ function arrange(dept: Department, w: number, h: number): Placement[] {
   const out: Placement[] = [];
   const put = (name: string, tx: number, ty: number, span = 1, dy = 0, dx = 0, z = 0) => out.push({ prop: name, tx, ty, span, dy, dx, z });
   let desks = 0;
-  /** A desk on row `ty` with its chair on the row below; every third desk carries a small plant. */
+  /** A desk on row `ty` with its computer, and its chair on the row below; every third desk carries a small plant. */
   const station = (tx: number, ty: number) => {
     put("desk", tx, ty, DESK_W);
+    for (const item of DESK_SETUP) out.push({ prop: item.prop, tx, ty, span: DESK_W, left: item.left, dy: item.dy, dx: 0, z: item.z });
     put(dept.chair, tx, ty + 1, DESK_W, -6);
     if (desks++ % 3 === 0) put("plant_pot", tx + 2, ty, 1, -22, 4, 30);
   };
@@ -326,7 +342,7 @@ export function furnish(space: Space, lib: MapLibrary, firstId = 0): FurnitureIn
     out.push({
       id: firstId + out.length,
       image: info.image,
-      x: (space.x + p.tx) * TILE + Math.round((p.span * TILE - info.w) / 2) + p.dx,
+      x: (space.x + p.tx) * TILE + (p.left ?? Math.round((p.span * TILE - info.w) / 2)) + p.dx,
       y: (space.y + p.ty + 1) * TILE + p.dy,
       width: info.w,
       height: info.h,

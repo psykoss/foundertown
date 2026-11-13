@@ -21,6 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEPARTMENT_FLOORS, TERRAIN, TERRAIN_COLUMNS, TERRAIN_COUNT } from "./lib/env.js";
 import type { TiledMap, TiledObject, TiledLayer, TiledProperty } from "../shared/src/map.js";
+import { DESK_SETUP } from "../shared/src/office.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = path.join(ROOT, "client/public/assets");
@@ -234,13 +235,14 @@ generate("town", 34, 27, ({ W, H, ground, fill, block, hwall, vwall, outerWalls,
   vwall(10, 19, H - 1, [22, 23]); // lounge | meeting room
   outerWalls();
 
-  // Open office: two rows of four desks with chairs (reference layout)
+  // Open office: two rows of four desks, each with its computer and its chair (reference layout)
   for (const row of [5, 10])
     for (const tx of [2, 6, 10, 14]) {
       placeC("desk", tx, row, 3);
+      for (const item of DESK_SETUP) placePx(item.prop, tx * T + item.left, (row + 1) * T + item.dy, item.z);
       placeC("office_chair", tx, row + 1, 3, -6);
     }
-  placePx("plant_desk", 2 * T + 8, 6 * T - 24, 20);
+  placePx("plant_desk", 2 * T - 19, 6 * T - 24, 20); // beside the first desk (the desk top is taken by the monitors)
   placePx("plant_desk", 15 * T + 60, 11 * T - 24, 20);
   placeC("plant_tree", 1, 3, 1);
   placeC("plant_small", 1, 8, 1);

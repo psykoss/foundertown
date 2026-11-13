@@ -211,5 +211,32 @@
   "footprintH": 0,
   "seat": "up",
   "layer": ""
+ },
+ {
+  "name": "dual_monitor",
+  "file": "office/dual_monitor.png",
+  "w": 55,
+  "h": 22,
+  "footprintW": 0,
+  "footprintH": 0,
+  "layer": ""
+ },
+ {
+  "name": "mac_mini",
+  "file": "office/mac_mini.png",
+  "w": 13,
+  "h": 10,
+  "footprintW": 0,
+  "footprintH": 0,
+  "layer": ""
+ },
+ {
+  "name": "mouse_mat",
+  "file": "office/mouse_mat.png",
+  "w": 21,
+  "h": 13,
+  "footprintW": 0,
+  "footprintH": 0,
+  "layer": ""
  }
 ]

@@ -13,7 +13,7 @@ import { Canvas } from "./lib/pixel.js";
 import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, SHEET_H, SHEET_W, sheetRow,
   KEY_RAMPS, FIXED_COLORS, masterPalette, LAYERS, SLOTS, STARTERS, rampLibraryFor,
-  DEPARTMENTS, buildWorld, mapLibrary, spaceFits,
+  DEPARTMENTS, DESK_SETUP, buildWorld, mapLibrary, spaceFits,
   type ItemRegistry, type TiledMap,
 } from "../shared/src/index.js";
 
@@ -128,7 +128,8 @@ if (maps.office) {
     if (!lib.props.has(d.chair)) err(`office.tmj: department ${d.id} uses the missing prop ${d.chair}`);
     if (world.build && !spaceFits([], { id: "a", kind: d.id, x: world.build.x, y: world.build.y, ...d.size }, world.build)) err(`department ${d.id}: its starting size does not fit the office`);
   }
-  for (const p of ["desk", "office_chair", "plant_tree", "plant_small", "plant_pot"]) if (!lib.props.has(p)) err(`office.tmj: missing prop ${p}`);
+  for (const p of ["desk", "office_chair", "plant_tree", "plant_small", "plant_pot", ...DESK_SETUP.map((d) => d.prop)]) if (!lib.props.has(p)) err(`office.tmj: missing prop ${p}`);
+  if (!lib.props.get("office_chair")?.seat) err("office.tmj: office_chair is not a seat");
 }
 
 if (errors.length) {
