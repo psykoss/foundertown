@@ -1,7 +1,8 @@
 /**
  * Account + profile. Supabase Auth signs people in (Google or email/password); the `profiles` row
- * holds everything about them. This module is the only place that talks to Supabase: it loads the
- * row into the store on sign-in and writes store changes back, so the UI just edits the store.
+ * holds everything about them. This module owns the Supabase client (the office layout is saved
+ * through it by `office.ts`): it loads the row into the store on sign-in and writes store changes
+ * back, so the UI just edits the store.
  *
  * Without Supabase configured the app runs in guest mode (local profile, no sign-in) for development.
  */
@@ -10,7 +11,8 @@ import { sanitizeFounder, sanitizeName, type Avatar, type FounderProfile } from 
 import { store, type AppState, type Session } from "../state/store";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
 
-const supabase = SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+/** Shared by the net layer only (`office.ts` saves the office through it). */
+export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 export const authEnabled = !!supabase;
 
 const COLUMNS = "name,time_zone,picture,avatar,onboarding,onboarded_at,lobby_code";

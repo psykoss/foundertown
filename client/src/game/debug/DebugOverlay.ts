@@ -21,6 +21,12 @@ export class DebugOverlay {
     this.redrawStatic();
   }
 
+  /** The map or the office layout changed. */
+  setWorld(world: WorldData) {
+    this.world = world;
+    this.redrawStatic();
+  }
+
   private redrawStatic() {
     const g = this.static_;
     const { debug } = store.get();

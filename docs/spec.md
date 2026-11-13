@@ -54,7 +54,7 @@ One item can use several layers (long hair = `hair_back` + `hair_front`).
 ```
 
 ## 5. Map (Tiled)
-`client/public/assets/maps/town.tmj`, tilesets embedded.
+`client/public/assets/maps/town.tmj` (the main lobby) and `office.tmj` (a private lobby: an empty floor), tilesets embedded.
 
 | Layer | Type | Purpose |
 |---|---|---|
@@ -67,6 +67,9 @@ One item can use several layers (long hair = `hair_back` + `hair_front`).
 | markers | objects | `spawn` points, `zone` rectangles (`kind` prop: room, pills…) |
 
 Buildings: the back wall shows its face (2 tiles), side and front walls show only their cap; doors are gaps in the front wall.
+
+### Office layout (private lobbies)
+A private lobby's map has a `zone` of kind `build`: the floor its owner can lay departments on. The layout is data stored per owner — `{ spaces: [{ id, kind, x, y, w, h }] }`, tiles — and `buildWorld(map, layout)` in `shared/src/office.ts` lays it over the map on the client and the server alike: each space paints its department's carpet (the terrain tile whose `floor` property is the department id), gets its furniture from `furnish` (derived from department and size, so a space can be resized freely), blocks the furniture's tiles, and becomes a zone of kind `space`. Spaces never overlap and have no walls. Sizes: 5×4 to 18×12 tiles, at most 24 spaces.
 
 ## 6. Asset pipeline
 ```

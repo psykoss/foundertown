@@ -3,7 +3,10 @@
  * Phaser rendering never owns game state (see CLAUDE.md §Rules).
  */
 import { useSyncExternalStore } from "react";
-import { DEFAULT_AVATAR, MAIN_LOBBY, sanitizeMeetings, type Avatar, type Dir, type FounderProfile, type ItemRegistry, type Meeting } from "@ft/shared";
+import {
+  DEFAULT_AVATAR, EMPTY_OFFICE, MAIN_LOBBY, sanitizeMeetings,
+  type Avatar, type Dir, type FounderProfile, type ItemRegistry, type Meeting, type OfficeLayout, type Rect, type Space,
+} from "@ft/shared";
 
 export interface DebugFlags {
   grid: boolean;
@@ -16,6 +19,8 @@ export interface Hud {
   tileX: number;
   tileY: number;
   zone: string | null;
+  /** Department (DEPARTMENTS id) of the office space you are standing in, if any. */
+  dept: string | null;
   zoom: number;
 }
 
@@ -29,13 +34,31 @@ export interface Minimap {
   edges: { x: number; y: number; side: "W" | "N" }[];
   /** Floor area taken by each piece of furniture. */
   furniture: { x: number; y: number; w: number; h: number }[];
+  /** Departments of the office layout. */
+  spaces: Space[];
 }
 
 /** Small anchored panels (one at a time) and blocking dialogs. */
 export type Popover = "menu" | "profile" | "player";
 export type Modal = "editProfile" | "editAvatar" | "invite" | "founder" | "settings" | "meeting";
-/** What fills the frame: the town, or the calendar page (the town keeps running under it). */
-export type View = "map" | "calendar";
+/**
+ * What fills the frame: the town, the calendar page (the town keeps running under it), or the
+ * studio — the owner editing their office, with a free camera over the same world.
+ */
+export type View = "map" | "calendar" | "studio";
+
+/** The office editor. The layout itself is `office`; this is what the owner is doing to it. */
+export interface Studio {
+  /** What a click on the floor does: place this department (DEPARTMENTS id), "erase" a space, or (null) select, move and resize. */
+  tool: string | null;
+  /** Selected space id. */
+  selected: string | null;
+  /** Layout shown instead of `office` while placing or dragging: space `id` is the one in hand, `fits` = it may be dropped there. */
+  preview: { layout: OfficeLayout; id: string; fits: boolean } | null;
+  undo: OfficeLayout[];
+  redo: OfficeLayout[];
+}
+export const STUDIO_IDLE: Studio = { tool: null, selected: null, preview: null, undo: [], redo: [] };
 
 /** Preferences, kept on this device (`ft.settings.v1`). */
 export interface Settings {
@@ -114,6 +137,13 @@ export interface AppState {
   /** Everyone in the room by session id; `selfId` is you. */
   players: Record<string, RemotePlayer>;
   selfId: string | null;
+  /** Office layout of the lobby we are in (always empty in the main lobby). The owner's edits land here first. */
+  office: OfficeLayout;
+  /** Floor of the current map that spaces can be laid on, in tiles (published by the world scene; null = not editable). */
+  build: Rect | null;
+  studio: Studio;
+  /** Whether the owner's last change to the office has been stored. */
+  officeSave: "saved" | "saving" | "error";
   /** Net → world intent: bump `n` to put the player on a tile (join, rejected move). */
   snap: { n: number; x: number; y: number };
   mic: boolean;
@@ -272,6 +302,10 @@ export const store = createStore<AppState>({
   net: { status: "offline", lobby: MAIN_LOBBY, title: "" },
   players: {},
   selfId: null,
+  office: EMPTY_OFFICE,
+  build: null,
+  studio: STUDIO_IDLE,
+  officeSave: "saved",
   snap: { n: 0, x: 0, y: 0 },
   mic: false,
   cam: false,
@@ -293,7 +327,7 @@ export const store = createStore<AppState>({
   minimap: null,
   zoomCmd: { n: 0, dir: 1 },
   debug: { grid: false, collision: false, depth: false },
-  hud: { fps: 0, tileX: 0, tileY: 0, zone: null, zoom: 1 },
+  hud: { fps: 0, tileX: 0, tileY: 0, zone: null, dept: null, zoom: 1 },
 });
 
 store.watch((s) => s.settings, (v) => writeJson(SETTINGS_KEY, v));

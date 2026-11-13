@@ -5,6 +5,7 @@ export * from "./movement.js";
 export * from "./path.js";
 export * from "./avatar.js";
 export * from "./map.js";
+export * from "./office.js";
 export * from "./random.js";
 export * from "./founder.js";
 export * from "./protocol.js";

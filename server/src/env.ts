@@ -28,8 +28,8 @@ export const env = {
   /** Cloudflare Realtime TURN key (`GET /ice` hands out short-lived credentials). Without it calls use STUN only. */
   turnKeyId: e.CLOUDFLARE_TURN_KEY_ID ?? "",
   turnApiToken: e.CLOUDFLARE_TURN_API_TOKEN ?? "",
-  /** Tiled map the room validates movement against (the same file the client renders). */
-  mapPath: e.MAP_PATH ?? fileURLToPath(new URL("../../client/public/assets/maps/town.tmj", import.meta.url)),
+  /** Folder of the Tiled maps the rooms validate movement against (the same files the client renders): town.tmj, office.tmj. */
+  mapDir: e.MAP_DIR ?? fileURLToPath(new URL("../../client/public/assets/maps", import.meta.url)),
 };
 
 export const supabaseConfigured = !!(env.supabaseUrl && env.supabaseAnonKey);

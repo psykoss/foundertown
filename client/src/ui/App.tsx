@@ -8,6 +8,8 @@ import { Onboarding } from "./Onboarding";
 import { CallLayer, InviteDialog, LobbyChip, Notice, PlayerCard } from "./Social";
 import { CalendarView, MeetingDialog } from "./Calendar";
 import { SettingsDialog } from "./Settings";
+import { DeptIcon, SpaceChips, Studio, StudioHint } from "./Studio";
+import { studioCancel } from "../state/studio";
 
 /** Matches `--t-open` in styles.css. */
 const EXIT_MS = 200;
@@ -40,6 +42,10 @@ export function App() {
   useEffect(() => {
     document.body.classList.toggle("no-sidebar", !sidebarOpen);
   }, [sidebarOpen]);
+  // The studio takes the sidebar's place with its own, wider panel.
+  useEffect(() => {
+    document.body.classList.toggle("studio", view === "studio");
+  }, [view]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -48,6 +54,7 @@ export function App() {
       if (s.popover) store.set({ popover: null });
       else if (s.modal === "editAvatar") store.set({ modal: s.avatarReturn, avatarReturn: null });
       else if (s.modal) store.set({ modal: null });
+      else if (s.view === "studio") studioCancel();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -68,15 +75,17 @@ export function App() {
     <>
       {/* always mounted: it slides out via body.no-sidebar instead of popping */}
       <Sidebar />
+      <Presence show={view === "studio"}><Studio /></Presence>
+      {ready && <SpaceChips />}
 
       <div className="frame-ui">
         {!ready && <div className="loading">Loading Founder Town…</div>}
         {ready && (
           <>
             <div className="frame-top">
-              <SidebarToggle />
+              {view !== "studio" && <SidebarToggle />}
               <LobbyChip />
-              {hud.zone && <span className="zone-chip">{hud.zone.replace("_", " ")}</span>}
+              {hud.zone && view !== "studio" && <span className="zone-chip">{hud.dept && <DeptIcon kind={hud.dept} />}{hud.zone.replace("_", " ")}</span>}
             </div>
             {anyDebug && (
               <div className="debug-panel">
@@ -88,6 +97,7 @@ export function App() {
             )}
             {view === "map" && <MapControls />}
             {view === "map" && <BottomBar />}
+            {view === "studio" && <StudioHint />}
             {/* the calendar page covers the town (which keeps running); calls stay on top of it */}
             <Presence show={view === "calendar"}><CalendarView /></Presence>
             <CallLayer />

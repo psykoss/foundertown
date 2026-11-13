@@ -8,11 +8,12 @@ import {
   Gift, Hammer, House, LampDesk, LogOut, Map as MapIcon, MessagesSquare, Mic, MicOff, Minus, Navigation, PanelLeft, Pencil, Plus,
   Search, Settings, Smile, Sprout, SquareDashed, SquarePen, User, UserPlus, Video, VideoOff, X,
 } from "lucide-react";
-import { MAIN_LOBBY, STAGES, optionLabel } from "@ft/shared";
+import { MAIN_LOBBY, STAGES, department, optionLabel } from "@ft/shared";
 import { joinLobby } from "../net/room";
 import { authEnabled, signOut } from "../net/session";
 import { setCam, setMic } from "../net/voice";
 import { store, useStore } from "../state/store";
+import { enterStudio } from "../state/studio";
 import { GoalChips } from "./PixelIcon";
 
 const ICON = { size: 20, strokeWidth: 1.75 } as const;
@@ -113,9 +114,9 @@ export function Sidebar() {
   );
 }
 
-function MenuItem({ icon, children, onClick }: { icon: ReactNode; children: ReactNode; onClick?: () => void }) {
+function MenuItem({ icon, children, onClick, disabled, title }: { icon: ReactNode; children: ReactNode; onClick?: () => void; disabled?: boolean; title?: string }) {
   return (
-    <button className="menu-item" role="menuitem" onClick={() => (store.set({ popover: null }), onClick?.())}>
+    <button className="menu-item" role="menuitem" disabled={disabled} title={title} onClick={() => (store.set({ popover: null }), onClick?.())}>
       {icon}
       <span>{children}</span>
     </button>
@@ -126,6 +127,8 @@ export function LogoMenu() {
   const i = { size: 18, strokeWidth: 1.75 };
   const lobby = useStore((s) => s.net.lobby);
   const myLobby = useStore((s) => s.myLobby);
+  // the office is edited from inside it: only the owner, only in their own lobby
+  const canEdit = useStore((s) => s.net.status === "online" && s.net.lobby !== MAIN_LOBBY && s.net.lobby === s.myLobby);
   return (
     <div className="menu" role="menu">
       <button className="btn primary wide" onClick={() => store.set({ popover: null, modal: "invite" })}>
@@ -142,7 +145,7 @@ export function LogoMenu() {
       <div className="menu-group">
         <div className="menu-label">Admin</div>
         <MenuItem icon={<LampDesk {...i} />}>Desk manager</MenuItem>
-        <MenuItem icon={<Hammer {...i} />}>Edit the office</MenuItem>
+        <MenuItem icon={<Hammer {...i} />} onClick={enterStudio} disabled={!canEdit} title={canEdit ? undefined : "Go to your lobby to edit your office"}>Edit the office</MenuItem>
         <MenuItem icon={<CreditCard {...i} />}>Billing dashboard</MenuItem>
       </div>
       <div className="menu-group">
@@ -278,6 +281,7 @@ export function Minimap({ onPick }: { onPick?: () => void }) {
       onClick={onPick ?? (() => setBig(!big))}
     >
       <svg viewBox={`-0.5 -0.5 ${map.width + 1} ${map.height + 1}`} style={{ aspectRatio: `${map.width + 1} / ${map.height + 1}` }}>
+        {map.spaces.map((s) => <rect key={s.id} x={s.x} y={s.y} width={s.w} height={s.h} className="mm-space" style={{ fill: department(s.kind)?.color }} />)}
         {map.furniture.map((f, i) => <rect key={i} x={f.x + 0.12} y={f.y + 0.12} width={Math.max(0.2, f.w - 0.24)} height={Math.max(0.2, f.h - 0.24)} rx="0.18" className="mm-furniture" />)}
         <rect width={map.width} height={map.height} className="mm-line" />
         <path d={lines} className="mm-line" />

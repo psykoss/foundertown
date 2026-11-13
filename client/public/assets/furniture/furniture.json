@@ -160,5 +160,50 @@
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
+ },
+ {
+  "name": "office_chair_amber",
+  "file": "office/office_chair_amber.png",
+  "w": 22,
+  "h": 20,
+  "footprintW": 1,
+  "footprintH": 1,
+  "layer": ""
+ },
+ {
+  "name": "office_chair_coral",
+  "file": "office/office_chair_coral.png",
+  "w": 22,
+  "h": 20,
+  "footprintW": 1,
+  "footprintH": 1,
+  "layer": ""
+ },
+ {
+  "name": "office_chair_blue",
+  "file": "office/office_chair_blue.png",
+  "w": 22,
+  "h": 20,
+  "footprintW": 1,
+  "footprintH": 1,
+  "layer": ""
+ },
+ {
+  "name": "office_chair_green",
+  "file": "office/office_chair_green.png",
+  "w": 22,
+  "h": 20,
+  "footprintW": 1,
+  "footprintH": 1,
+  "layer": ""
+ },
+ {
+  "name": "office_chair_grey",
+  "file": "office/office_chair_grey.png",
+  "w": 22,
+  "h": 20,
+  "footprintW": 1,
+  "footprintH": 1,
+  "layer": ""
  }
 ]

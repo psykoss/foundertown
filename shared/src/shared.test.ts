@@ -20,6 +20,8 @@ import {
   type TiledMap,
   sanitizeFounder, sanitizeName, isLobby, voiceVolume, BUILDING_MAX, MAIN_LOBBY, VOICE,
   weekDays, startOfWeek, monthDays, sameDay, layoutDay, dueReminders, sanitizeMeetings, MIN_BLOCK_MIN, type Meeting,
+  DEPARTMENTS, SPACE_MAX, SPACE_MIN, TILE, buildWorld, floorUsed, footprintOf, keepInside, mapOf, nearestFree, resizeSpace, sanitizeLayout, spaceAt, spaceFits,
+  type Space,
 } from "./index.js";
 
 describe("movement", () => {
@@ -218,5 +220,116 @@ describe("calendar", () => {
     expect(sanitizeMeetings("nope")).toEqual([]);
     expect(sanitizeMeetings([{ id: "x", title: " Demo ", start: 2, end: 3 }, { id: "y", title: "bad", start: 5, end: 5 }, null, { id: "z", title: "", start: 0, end: 1 }]))
       .toEqual([{ id: "z", title: "Meeting", start: 0, end: 1, notes: "" }, { id: "x", title: "Demo", start: 2, end: 3, notes: "" }]);
+  });
+});
+
+describe("office", () => {
+  const build = { x: 0, y: 3, w: 40, h: 23 };
+  const space = (id: string, kind: string, x: number, y: number, w: number, h: number): Space => ({ id, kind, x, y, w, h });
+  /** A bare office map: no tile layers, the prop and floor tilesets the layout needs, a 40×23 floor to build on. */
+  const prop = (id: number, name: string, w: number, h: number, fw: number, fh: number) => ({
+    id, image: `../furniture/office/${name}.png`, imagewidth: w, imageheight: h,
+    properties: [{ name: "footprintW", type: "int", value: fw }, { name: "footprintH", type: "int", value: fh }],
+  });
+  const map: TiledMap = {
+    type: "map", orientation: "orthogonal", width: 40, height: 26, tilewidth: 32, tileheight: 32,
+    layers: [{ id: 1, name: "markers", type: "objectgroup", visible: true, opacity: 1, objects: [
+      { id: 1, name: "floor", type: "zone", x: 0, y: 96, width: 1280, height: 736, properties: [{ name: "kind", type: "string", value: "build" }] },
+    ] }],
+    tilesets: [
+      { firstgid: 1, name: "terrain", tilewidth: 32, tileheight: 32, tilecount: 32, columns: 8, tiles: DEPARTMENTS.map((d, i) => ({ id: 10 + i, properties: [{ name: "floor", type: "string", value: d.id }] })) },
+      { firstgid: 33, name: "props", tilewidth: 160, tileheight: 160, tilecount: 5, columns: 0, tiles: [
+        prop(0, "desk", 85, 37, 3, 1), prop(1, "office_chair", 22, 20, 1, 1), prop(2, "plant_tree", 36, 62, 1, 1), prop(3, "plant_small", 28, 46, 1, 1), prop(4, "plant_pot", 11, 13, 0, 0),
+      ] },
+    ],
+  };
+
+  it("plays private lobbies on the office map", () => {
+    expect(mapOf(MAIN_LOBBY)).toBe("town");
+    expect(mapOf("abcd1234efgh")).toBe("office");
+  });
+
+  it("reads the buildable floor from the map, not as a zone", () => {
+    const world = buildWorld(map);
+    expect(world.build).toEqual(build);
+    expect(world.zones).toEqual([]);
+    expect(world.spaces).toEqual([]);
+  });
+
+  it("lets a space stand only where it fits", () => {
+    const a = space("a", "sales", 2, 4, 10, 6);
+    expect(spaceFits([], a, build)).toBe(true);
+    expect(spaceFits([a], space("b", "finance", 11, 4, 9, 5), build)).toBe(false); // overlaps a
+    expect(spaceFits([a], space("b", "finance", 12, 4, 9, 5), build)).toBe(true); // side by side, no gap needed
+    expect(spaceFits([a], { ...a, x: 3 }, build)).toBe(true); // moving a itself
+    expect(spaceFits([], space("c", "hq", 0, 2, 9, 6), build)).toBe(false); // on the back wall
+    expect(spaceFits([], space("c", "hq", 32, 4, 9, 6), build)).toBe(false); // past the right edge
+    expect(spaceFits([], space("c", "hq", 0, 3, SPACE_MIN.w - 1, 6), build)).toBe(false);
+    expect(spaceFits([], space("c", "hq", 0, 3, SPACE_MAX.w + 1, 6), build)).toBe(false);
+  });
+
+  it("keeps a dragged or stretched space on the floor and within its size limits", () => {
+    expect(keepInside(space("a", "hq", -3, 0, 9, 6), build)).toMatchObject({ x: 0, y: 3 });
+    expect(keepInside(space("a", "hq", 38, 30, 9, 6), build)).toMatchObject({ x: 31, y: 20 });
+    const s = space("a", "product", 10, 10, 9, 7);
+    expect(resizeSpace(s, "e", 21, 0, build)).toMatchObject({ x: 10, w: 12, h: 7 });
+    expect(resizeSpace(s, "e", 0, 0, build)).toMatchObject({ x: 10, w: SPACE_MIN.w }); // cannot shrink below one desk
+    expect(resizeSpace(s, "e", 99, 0, build)).toMatchObject({ x: 10, w: SPACE_MAX.w });
+    expect(resizeSpace(s, "nw", 8, 8, build)).toMatchObject({ x: 8, y: 8, w: 11, h: 9 }); // the far corner stays put
+    expect(resizeSpace(s, "n", 0, -5, build)).toMatchObject({ y: 5, h: 12 }); // stops at the largest size
+    expect(resizeSpace(space("a", "product", 10, 4, 9, 7), "n", 0, -5, build)).toMatchObject({ y: 3, h: 8 }); // and at the wall
+    expect(resizeSpace(s, "s", 0, 99, build)).toMatchObject({ y: 10, h: SPACE_MAX.h });
+  });
+
+  it("stores only layouts that are well formed and fit", () => {
+    const a = space("a", "sales", 2, 4, 10, 6);
+    const raw = { spaces: [a, { ...a, id: "b" }, space("c", "nope", 20, 4, 9, 5), { ...a, id: "Bad Id", x: 20 }, space("d", "legal", 20, 4, 7, 7), { id: "e", kind: "hq", x: 1.5, y: 12, w: 9, h: 6 }, null, space("a", "hq", 28, 12, 9, 6)] };
+    expect(sanitizeLayout(raw, build)).toEqual({ spaces: [a, space("d", "legal", 20, 4, 7, 7)] });
+    expect(sanitizeLayout(raw, null)).toEqual({ spaces: [] }); // a map with nothing to build on
+    expect(sanitizeLayout("nope", build)).toEqual({ spaces: [] });
+    expect(floorUsed({ spaces: [a] }, build)).toBeCloseTo(60 / 920);
+  });
+
+  it("furnishes every department at every size without leaving the space or stacking furniture", () => {
+    for (const d of DEPARTMENTS)
+      for (let w = SPACE_MIN.w; w <= SPACE_MAX.w; w++)
+        for (let h = SPACE_MIN.h; h <= SPACE_MAX.h; h++) {
+          const s = space("a", d.id, 5, 6, w, h);
+          const world = buildWorld(map, { spaces: [s] });
+          const taken = new Set<string>();
+          const desks = world.furniture.filter((f) => f.image === "desk.png");
+          expect(desks.length, `${d.id} ${w}×${h}`).toBeGreaterThan(0);
+          for (const f of world.furniture) {
+            const fp = footprintOf(f);
+            for (let y = fp.y; y < fp.y + fp.h; y++)
+              for (let x = fp.x; x < fp.x + fp.w; x++) {
+                expect(spaceAt([s], x, y), `${d.id} ${w}×${h}: ${f.image} at ${x},${y}`).toBe(s);
+                expect(taken.has(`${x},${y}`), `${d.id} ${w}×${h}: two things on ${x},${y}`).toBe(false);
+                taken.add(`${x},${y}`);
+                expect(world.grid.isBlocked(x, y)).toBe(true);
+              }
+          }
+          // every desk can be reached: the tile in front of its chair is free and connected to the floor outside
+          for (const desk of desks) {
+            const fp = footprintOf(desk);
+            expect(findPath(world.grid, { x: 0, y: 4 }, { x: fp.x, y: fp.y + 1 }), `${d.id} ${w}×${h}: desk at ${fp.x},${fp.y}`).not.toBeNull();
+          }
+        }
+  });
+
+  it("lays the layout over the map: floors, zones, collisions", () => {
+    const s = space("a", "finance", 4, 6, 9, 5);
+    const world = buildWorld(map, { spaces: [s] });
+    expect(world.spaces).toEqual([{ ...s, floor: 1 + 10 + DEPARTMENTS.findIndex((d) => d.id === "finance") }]);
+    expect(world.zones).toEqual([{ name: "Finance", kind: "space", x: 4 * TILE, y: 6 * TILE, width: 9 * TILE, height: 5 * TILE }]);
+    // finance: two desks along the back; with no finance chair in this map the plain office chair stands in
+    expect(world.furniture.filter((f) => f.image === "desk.png").map(footprintOf)).toEqual([{ x: 5, y: 7, w: 3, h: 1 }, { x: 9, y: 7, w: 3, h: 1 }]);
+    expect(world.furniture.filter((f) => f.image === "office_chair.png").map(footprintOf)).toEqual([{ x: 6, y: 8, w: 1, h: 1 }, { x: 10, y: 8, w: 1, h: 1 }]);
+    expect(world.grid.isBlocked(5, 7)).toBe(true);
+    expect(world.grid.isBlocked(4, 7)).toBe(false);
+    // someone under a desk is moved to the nearest free tile; someone on free floor stays
+    expect(nearestFree(world, 6, 7)).toEqual({ x: 6, y: 6 });
+    expect(nearestFree(world, 4, 7)).toEqual({ x: 4, y: 7 });
+    expect(buildWorld(map).grid.isBlocked(5, 7)).toBe(false); // the bare map is untouched
   });
 });

@@ -5,8 +5,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY shared ./shared
 COPY server ./server
-# The room validates movement against the same map the client renders.
-COPY client/public/assets/maps/town.tmj ./client/public/assets/maps/town.tmj
+# The rooms validate movement against the same maps the client renders (town.tmj, office.tmj).
+COPY client/public/assets/maps ./client/public/assets/maps
 RUN pnpm install --frozen-lockfile --filter @ft/server...
 ENV NODE_ENV=production PORT=2567
 EXPOSE 2567

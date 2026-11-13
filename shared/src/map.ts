@@ -107,6 +107,22 @@ export interface Zone {
   height: number;
 }
 
+/** A rectangle of tiles. */
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** A department of the office layout as it stands in the world (see `office.ts`). */
+export interface PlacedSpace extends Rect {
+  id: string;
+  kind: string;
+  /** Terrain tile (gid) of its floor; 0 = the map has no floor for it. */
+  floor: number;
+}
+
 export interface WorldData {
   width: number;
   height: number;
@@ -114,6 +130,10 @@ export interface WorldData {
   furniture: FurnitureInstance[];
   spawns: Spawn[];
   zones: Zone[];
+  /** Floor the owner can lay spaces on (a zone of kind "build"), or null on a map that cannot be edited. */
+  build: Rect | null;
+  /** Spaces of the office layout laid over the map (`buildWorld`); a bare map has none. */
+  spaces: PlacedSpace[];
 }
 
 function tileForGid(map: TiledMap, gid: number): { ts: TiledTileset; tile?: TiledTile } | null {
@@ -144,6 +164,7 @@ export function parseWorld(map: TiledMap): WorldData {
   const furniture: FurnitureInstance[] = [];
   const spawns: Spawn[] = [];
   const zones: Zone[] = [];
+  let build: Rect | null = null;
 
   for (const layer of map.layers) {
     if (layer.type !== "objectgroup" || !layer.objects) continue;
@@ -163,11 +184,13 @@ export function parseWorld(map: TiledMap): WorldData {
         grid.blockRect(tx, tyBottom - fh + 1, fw, fh);
       } else if (kind === "spawn") {
         spawns.push({ name: o.name, tileX: Math.floor(o.x / TILE), tileY: Math.floor(o.y / TILE) });
+      } else if (kind === "zone" && prop<string>(o.properties, "kind", "area") === "build") {
+        build = { x: Math.round(o.x / TILE), y: Math.round(o.y / TILE), w: Math.round(o.width / TILE), h: Math.round(o.height / TILE) };
       } else if (kind === "zone") {
         zones.push({ name: o.name, kind: prop(o.properties, "kind", "area"), x: o.x, y: o.y, width: o.width, height: o.height });
       }
     }
   }
 
-  return { width: map.width, height: map.height, grid, furniture, spawns, zones };
+  return { width: map.width, height: map.height, grid, furniture, spawns, zones, build, spaces: [] };
 }

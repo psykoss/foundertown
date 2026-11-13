@@ -5,21 +5,29 @@
  * Multiplayer: the player moves locally at once (prediction) and reports each step; the server
  * validates it and may send the player back (`snap`). Everyone else is a Character walking toward
  * the tile the server last reported for them (`store.players`).
+ *
+ * The world is rebuilt in place whenever its data changes: another lobby (the town map or the
+ * office map), a new office layout, or the studio holding a space in hand (`studio.preview`).
+ * In the studio the same world is shown without characters, under a free camera.
  */
 import Phaser from "phaser";
 import {
-  TILE, findPath, parseWorld, sanitizeAvatar,
-  type ItemRegistry, type TiledMap, type WorldData,
+  TILE, buildWorld, findPath, mapOf, sanitizeAvatar, spaceAt,
+  type ItemRegistry, type MapName, type TiledMap, type WorldData,
 } from "@ft/shared";
 import { sendMove } from "../../net/room";
 import { store, type RemotePlayer } from "../../state/store";
 import { Character } from "../entities/Character";
 import { CharacterView } from "../entities/CharacterView";
 import { InputController } from "../input/InputController";
-import { setupCamera } from "../render/camera";
+import { StudioInput } from "../input/StudioInput";
+import { setupCamera, type CameraControls } from "../render/camera";
+import { FocusVeil } from "../render/FocusVeil";
+import { StudioOverlay } from "../render/StudioOverlay";
 import { TileCursor } from "../render/TileCursor";
+import { WorldLayer } from "../render/WorldLayer";
 import { DebugOverlay } from "../debug/DebugOverlay";
-import { WorldView, DEPTH_ABOVE } from "../world/WorldView";
+import { WorldView } from "../world/WorldView";
 
 /** A remote player further than this from where we last drew them is moved at once instead of walked. */
 const WALK_RANGE = 10;
@@ -34,13 +42,21 @@ interface Remote {
 
 export class WorldScene extends Phaser.Scene {
   private world!: WorldData;
+  /** The map on screen (`town` or `office`), its Tiled data and its tile layers. */
+  private mapName: MapName | null = null;
+  private raw!: TiledMap;
+  private view!: WorldView;
+  private camera?: CameraControls;
   private player!: CharacterView;
   private items!: ItemRegistry;
   private remotes = new Map<string, Remote>();
   /** Last position reported to the server. */
   private sent = { x: -1, y: -1, dir: "" };
   private input_!: InputController;
-  private debug!: DebugOverlay;
+  private studioInput!: StudioInput;
+  private studioOverlay!: StudioOverlay;
+  private veil!: FocusVeil;
+  private debug?: DebugOverlay;
   private cursor!: TileCursor;
   private hudTimer = 0;
 
@@ -50,9 +66,9 @@ export class WorldScene extends Phaser.Scene {
 
   create() {
     const registry = (this.items = store.get().registry as ItemRegistry);
-    const raw = this.cache.tilemap.get("town").data as TiledMap;
-    this.world = parseWorld(raw);
-    const view = new WorldView(this, "town", raw, this.world);
+    new WorldLayer(this);
+    this.veil = new FocusVeil(this);
+    this.loadWorld();
 
     const spawn = this.world.spawns.find((s) => s.name === "main") ?? { tileX: 1, tileY: 1 };
     const avatar = sanitizeAvatar(store.get().avatar, registry);
@@ -63,22 +79,24 @@ export class WorldScene extends Phaser.Scene {
     this.debug = new DebugOverlay(this, this.world);
     this.cursor = new TileCursor(this);
 
-    const camera = setupCamera(this, this.player.sprite, view.widthPx, view.heightPx, (zoom) => store.set((s) => ({ hud: { ...s.hud, zoom } })));
+    const camera = (this.camera = setupCamera(this, this.player.sprite, this.view.widthPx, this.view.heightPx, (zoom) => store.set((s) => ({ hud: { ...s.hud, zoom } }))));
     store.watch((s) => s.zoomCmd, (c) => camera.zoomStep(c.dir));
-
-    // Minimap floor plan (walls, thin walls, furniture footprints) + own name tag opens the profile card
-    const { width, height, grid } = this.world;
-    const walls = new Uint8Array(width * height);
-    raw.layers.find((l) => l.name === "collision" && l.type === "tilelayer")?.data?.forEach((gid, i) => (walls[i] = gid ? 1 : 0));
-    const edges: { x: number; y: number; side: "W" | "N" }[] = [];
-    for (let y = 0; y < height; y++)
-      for (let x = 0; x < width; x++)
-        for (const side of ["W", "N"] as const) if (grid.hasEdge(x, y, side)) edges.push({ x, y, side });
-    const furniture = this.world.furniture
-      .filter((f) => f.footprint.w > 0 && f.footprint.h > 0)
-      .map((f) => ({ x: f.x / TILE, y: f.y / TILE - f.footprint.h, w: f.width / TILE, h: f.footprint.h }));
-    store.set({ minimap: { width, height, walls, edges, furniture } });
+    this.studioInput = new StudioInput(this, camera);
+    this.studioOverlay = new StudioOverlay(this);
     this.player.label.onClick(() => store.set({ popover: "profile" }));
+
+    // World data → world: another lobby (map), another office layout, a space in hand in the studio
+    store.watch((s) => s.net.lobby, () => this.loadWorld());
+    store.watch((s) => s.office, () => this.loadWorld());
+    store.watch((s) => s.studio.preview, () => this.loadWorld());
+    const studio = (on: boolean) => {
+      camera.setFree(on);
+      this.studioInput.setEnabled(on);
+      this.player.setShown(!on);
+      for (const r of this.remotes.values()) r.view.setShown(!on);
+    };
+    store.watch((s) => s.view === "studio", studio);
+    if (store.get().view === "studio") studio(true);
 
     // Store → world bindings
     store.watch((s) => s.avatar, (a) => {
@@ -99,7 +117,42 @@ export class WorldScene extends Phaser.Scene {
     this.syncRemotes();
 
     store.set({ ready: true });
-    void DEPTH_ABOVE;
+  }
+
+  /**
+   * Bring the world in line with the store: the map of the lobby we are in, with the office layout
+   * (or the studio's preview of it) laid over. The tile layers are rebuilt only when the map changes.
+   */
+  private loadWorld() {
+    const s = store.get();
+    const name = mapOf(s.net.lobby);
+    if (name !== this.mapName) {
+      this.view?.destroy();
+      this.mapName = name;
+      this.raw = this.cache.tilemap.get(name).data as TiledMap;
+      this.view = new WorldView(this, name);
+      this.camera?.setWorld(this.view.widthPx, this.view.heightPx);
+    }
+    const preview = s.studio.preview;
+    this.world = buildWorld(this.raw, preview?.layout ?? s.office);
+    this.view.setWorld(this.world);
+    this.debug?.setWorld(this.world);
+    if (!preview) this.publishPlan();
+  }
+
+  /** Floor plan for the minimap (walls, thin walls, furniture footprints, spaces) and the floor the studio can build on. */
+  private publishPlan() {
+    const { width, height, grid, build, spaces } = this.world;
+    const walls = new Uint8Array(width * height);
+    this.raw.layers.find((l) => l.name === "collision" && l.type === "tilelayer")?.data?.forEach((gid, i) => (walls[i] = gid ? 1 : 0));
+    const edges: { x: number; y: number; side: "W" | "N" }[] = [];
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++)
+        for (const side of ["W", "N"] as const) if (grid.hasEdge(x, y, side)) edges.push({ x, y, side });
+    const furniture = this.world.furniture
+      .filter((f) => f.footprint.w > 0 && f.footprint.h > 0)
+      .map((f) => ({ x: f.x / TILE, y: f.y / TILE - f.footprint.h, w: f.width / TILE, h: f.footprint.h }));
+    store.set({ minimap: { width, height, walls, edges, furniture, spaces }, build });
   }
 
   update(_time: number, delta: number) {
@@ -136,7 +189,13 @@ export class WorldScene extends Phaser.Scene {
     // render
     this.player.update();
     for (const { view } of this.remotes.values()) view.update();
-    this.debug.update([this.player.feet(), ...[...this.remotes.values()].map((r) => r.view.feet())]);
+    this.debug?.update([this.player.feet(), ...[...this.remotes.values()].map((r) => r.view.feet())]);
+    const { view: page, studio, office, build } = store.get();
+    const editing = page === "studio";
+    this.studioOverlay.update(editing ? studio : null, office, build);
+    // focus: standing in a space blurs everything outside it (one tile more above it, where heads and desk tops reach)
+    const here = editing ? undefined : spaceAt(this.world.spaces, at.x, at.y);
+    this.veil.set(here ? { x: here.x * TILE, y: (here.y - 1) * TILE, width: here.w * TILE, height: (here.h + 1) * TILE } : null);
 
     // HUD (4 Hz)
     this.hudTimer += delta;
@@ -146,7 +205,8 @@ export class WorldScene extends Phaser.Scene {
       const px = t.x * TILE + TILE / 2;
       const py = t.y * TILE + TILE / 2;
       const zone = this.world.zones.find((z) => px >= z.x && px < z.x + z.width && py >= z.y && py < z.y + z.height);
-      store.set((s) => ({ hud: { ...s.hud, fps: Math.round(this.game.loop.actualFps), tileX: t.x, tileY: t.y, zone: zone?.name ?? null } }));
+      const dept = spaceAt(this.world.spaces, t.x, t.y)?.kind ?? null;
+      store.set((s) => ({ hud: { ...s.hud, fps: Math.round(this.game.loop.actualFps), tileX: t.x, tileY: t.y, zone: zone?.name ?? null, dept } }));
     }
   }
 
@@ -164,6 +224,7 @@ export class WorldScene extends Phaser.Scene {
       if (!r) {
         const c = new Character(p.id, p.name, sanitizeAvatar(p.avatar, this.items), p.x, p.y, p.dir);
         const view = new CharacterView(this, c, this.items);
+        view.setShown(store.get().view !== "studio");
         view.onClick(() => store.set({ popover: "player", selected: p.id }));
         this.remotes.set(p.id, (r = { view, data: p }));
       } else if (r.data !== p) {

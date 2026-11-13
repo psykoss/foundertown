@@ -2,13 +2,17 @@
  * Connection to the multiplayer room. Mirrors the room state into the store (`players`, `net`) and
  * sends the player's intents; nothing here knows about Phaser or React.
  * A lost connection is retried in place; a lobby that refuses us falls back to the main lobby.
+ *
+ * The office layout travels the same way: the room state carries it to everyone (`store.office`),
+ * and when the owner changes it in the store it is sent to the room and saved (`office.ts`).
  */
 import { Client, type Room } from "@colyseus/sdk";
 import {
-  EMPTY_FOUNDER, MAIN_LOBBY, MSG, ROOM, isLobby,
-  type Avatar, type CallKind, type Dir, type JoinOptions, type MediaMsg, type MoveMsg, type PlayerState, type ProfileMsg, type Relay, type RtcData, type SnapMsg,
+  EMPTY_FOUNDER, EMPTY_OFFICE, MAIN_LOBBY, MSG, ROOM, isLobby,
+  type Avatar, type CallKind, type Dir, type JoinOptions, type MediaMsg, type MoveMsg, type OfficeLayout, type PlayerState, type ProfileMsg, type Relay, type RtcData, type SnapMsg,
 } from "@ft/shared";
 import { lobbyCodeFromUrl, PLAY_PATH } from "../router";
+import { guestOffice, saveOffice } from "./office";
 import { store, type RemotePlayer } from "../state/store";
 import { SERVER_URL } from "./config";
 import { getToken } from "./session";
@@ -22,6 +26,30 @@ let generation = 0;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
 /** Avatar JSON last parsed per player, so an unchanged avatar keeps its object identity. */
 const avatarJson = new Map<string, string>();
+/** Office layout as the room last sent it (JSON, and the object put in the store). Any other `store.office` is the owner's own edit. */
+let officeJson = "";
+let roomOffice: OfficeLayout = EMPTY_OFFICE;
+
+/** Are we in our own lobby — the one whose office we may edit? */
+export function ownsLobby(): boolean {
+  const s = store.get();
+  return s.net.lobby !== MAIN_LOBBY && s.net.lobby === s.myLobby;
+}
+/** While the owner is in the studio their layout is the newest there is; the room only echoes it back. */
+const editing = () => store.get().view === "studio" && ownsLobby();
+
+function takeRoomOffice() {
+  let layout: OfficeLayout = EMPTY_OFFICE;
+  try {
+    layout = JSON.parse(officeJson) as OfficeLayout;
+  } catch {
+    /* not sent yet */
+  }
+  if (!Array.isArray(layout?.spaces)) layout = EMPTY_OFFICE;
+  if (JSON.stringify(store.get().office) === JSON.stringify(layout)) return void (roomOffice = store.get().office);
+  roomOffice = layout;
+  store.set({ office: layout });
+}
 
 type RelayHandler<T> = (from: string, data: T) => void;
 const rtcHandlers = new Set<RelayHandler<RtcData>>();
@@ -48,7 +76,12 @@ function snap(at: { x: number; y: number }) {
 }
 
 /** Copy the room state into the store, reusing the objects of players that did not change. */
-function sync(state: { title: string; players: { forEach(cb: (p: PlayerState, id: string) => void): void } }) {
+function sync(state: { title: string; office: string; players: { forEach(cb: (p: PlayerState, id: string) => void): void } }) {
+  if (state.office !== officeJson) {
+    const first = !officeJson;
+    officeJson = state.office;
+    if (first || !editing()) takeRoomOffice();
+  }
   const s = store.get();
   const next: Record<string, RemotePlayer> = {};
   let changed = false;
@@ -79,11 +112,15 @@ export async function joinLobby(lobby: string, at?: { x: number; y: number }): P
   room = null;
   void previous?.leave();
   avatarJson.clear();
-  store.set({ net: { status: "connecting", lobby, title: "" }, players: {}, selfId: null });
+  officeJson = "";
+  roomOffice = EMPTY_OFFICE;
+  // the studio edits the lobby we are in: leaving the lobby leaves the studio
+  store.set((s) => ({ net: { status: "connecting", lobby, title: "" }, players: {}, selfId: null, office: EMPTY_OFFICE, view: s.view === "studio" && lobby !== s.net.lobby ? "map" : s.view }));
 
   let r: Room;
   try {
-    r = await client.joinOrCreate(ROOM, { lobby, token: await getToken(), ...profile(), at } satisfies JoinOptions);
+    const office = lobby === store.get().myLobby ? guestOffice() : undefined;
+    r = await client.joinOrCreate(ROOM, { lobby, token: await getToken(), ...profile(), at, office } satisfies JoinOptions);
   } catch (e) {
     if (gen !== generation) return;
     // A numeric code means the server answered and said no (bad lobby, not signed in); anything else is the network.
@@ -100,7 +137,6 @@ export async function joinLobby(lobby: string, at?: { x: number; y: number }): P
   room = r;
   r.reconnection.enabled = false; // a drop ends this room; we rejoin below with a fresh session
   store.set((s) => ({ net: { ...s.net, status: "online" }, selfId: r.sessionId }));
-  history.replaceState(null, "", lobbyUrl(lobby));
   let placed = false;
   r.onStateChange((state) => {
     if (room !== r) return;
@@ -129,6 +165,15 @@ export const sendRtc = (to: string, data: RtcData) => room?.send(MSG.rtc, { to, 
 export const sendCall = (to: string, data: CallKind) => room?.send(MSG.call, { to, data } satisfies Relay<CallKind>);
 export const onRtc = (h: RelayHandler<RtcData>) => void rtcHandlers.add(h);
 export const onCall = (h: RelayHandler<CallKind>) => void callHandlers.add(h);
+
+/** The owner changed their office (the studio writes `store.office`): tell the room, and save it. */
+store.watch((s) => s.office, (office) => {
+  if (office === roomOffice || !room || !ownsLobby()) return;
+  room.send(MSG.office, office);
+  saveOffice(office);
+});
+/** Out of the studio the room is the authority again: take what it holds (normally the same layout). */
+store.watch((s) => s.view === "studio", (inStudio) => !inStudio && officeJson && takeRoomOffice());
 
 /** Keep the room's copy of our profile in step with the store. */
 for (const field of ["playerName", "avatar", "founder"] as const) store.watch((s) => s[field], () => room?.send(MSG.profile, profile()));

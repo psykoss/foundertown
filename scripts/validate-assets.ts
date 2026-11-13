@@ -13,6 +13,7 @@ import { Canvas } from "./lib/pixel.js";
 import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, SHEET_H, SHEET_W, sheetRow,
   KEY_RAMPS, FIXED_COLORS, masterPalette, LAYERS, SLOTS, STARTERS, rampLibraryFor,
+  DEPARTMENTS, buildWorld, mapLibrary, spaceFits,
   type ItemRegistry, type TiledMap,
 } from "../shared/src/index.js";
 
@@ -93,25 +94,45 @@ for (const dir of ["tilesets", "furniture"]) {
   for (const f of files) scanColors(Canvas.load(path.join(A, dir, f)), master, `${dir}/${f}`, true);
 }
 
-// ── map ──
-const mapFile = path.join(A, "maps/town.tmj");
-const map: TiledMap = JSON.parse(fs.readFileSync(mapFile, "utf8"));
-for (const name of ["ground", "walls", "collision", "objects", "above", "markers"])
-  if (!map.layers.some((l) => l.name === name)) err(`town.tmj: missing layer "${name}"`);
-const maxGid = Math.max(...map.tilesets.map((t) => t.firstgid + t.tilecount - 1));
-for (const l of map.layers) {
-  l.data?.forEach((gid) => gid > maxGid && err(`town.tmj: layer ${l.name} has unknown gid ${gid}`));
-  l.objects?.forEach((o) => o.gid && (o.gid & 0x1fffffff) > maxGid && err(`town.tmj: object ${o.id} unknown gid`));
+// ── maps ──
+const maps: Record<string, TiledMap> = {};
+for (const name of ["town", "office"]) {
+  const mapFile = path.join(A, `maps/${name}.tmj`);
+  if (!fs.existsSync(mapFile)) {
+    err(`${name}.tmj: missing`);
+    continue;
+  }
+  const map: TiledMap = (maps[name] = JSON.parse(fs.readFileSync(mapFile, "utf8")));
+  for (const layer of ["ground", "walls", "collision", "objects", "above", "markers"])
+    if (!map.layers.some((l) => l.name === layer)) err(`${name}.tmj: missing layer "${layer}"`);
+  const maxGid = Math.max(...map.tilesets.map((t) => t.firstgid + t.tilecount - 1));
+  for (const l of map.layers) {
+    l.data?.forEach((gid) => gid > maxGid && err(`${name}.tmj: layer ${l.name} has unknown gid ${gid}`));
+    l.objects?.forEach((o) => o.gid && (o.gid & 0x1fffffff) > maxGid && err(`${name}.tmj: object ${o.id} unknown gid`));
+  }
+  for (const ts of map.tilesets) {
+    if (ts.image && !fs.existsSync(path.resolve(path.dirname(mapFile), ts.image))) err(`${name}.tmj: missing ${ts.image}`);
+    ts.tiles?.forEach((t) => t.image && !fs.existsSync(path.resolve(path.dirname(mapFile), t.image)) && err(`${name}.tmj: missing ${t.image}`));
+  }
+  const hasSpawn = map.layers.some((l) => l.objects?.some((o) => (o.type ?? o.class) === "spawn"));
+  if (!hasSpawn) err(`${name}.tmj: no spawn marker`);
 }
-for (const ts of map.tilesets) {
-  if (ts.image && !fs.existsSync(path.resolve(path.dirname(mapFile), ts.image))) err(`town.tmj: missing ${ts.image}`);
-  ts.tiles?.forEach((t) => t.image && !fs.existsSync(path.resolve(path.dirname(mapFile), t.image)) && err(`town.tmj: missing ${t.image}`));
+
+// the office: a floor to build on, and a carpet, a chair and room for every department
+if (maps.office) {
+  const world = buildWorld(maps.office);
+  const lib = mapLibrary(maps.office);
+  if (!world.build) err(`office.tmj: no zone of kind "build"`);
+  for (const d of DEPARTMENTS) {
+    if (!lib.floors.has(d.id)) err(`office.tmj: no terrain tile with floor="${d.id}"`);
+    if (!lib.props.has(d.chair)) err(`office.tmj: department ${d.id} uses the missing prop ${d.chair}`);
+    if (world.build && !spaceFits([], { id: "a", kind: d.id, x: world.build.x, y: world.build.y, ...d.size }, world.build)) err(`department ${d.id}: its starting size does not fit the office`);
+  }
+  for (const p of ["desk", "office_chair", "plant_tree", "plant_small", "plant_pot"]) if (!lib.props.has(p)) err(`office.tmj: missing prop ${p}`);
 }
-const hasSpawn = map.layers.some((l) => l.objects?.some((o) => (o.type ?? o.class) === "spawn"));
-if (!hasSpawn) err("town.tmj: no spawn marker");
 
 if (errors.length) {
   console.error(`✗ asset validation failed (${errors.length}):\n  ` + errors.join("\n  "));
   process.exit(1);
 }
-console.log(`✓ assets valid: ${reg.items.length} items, map ${map.width}×${map.height}`);
+console.log(`✓ assets valid: ${reg.items.length} items, maps ${Object.entries(maps).map(([n, m]) => `${n} ${m.width}×${m.height}`).join(", ")}`);

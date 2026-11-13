@@ -14,9 +14,9 @@ import {
   ANIMS, ANIM_ORDER, FRAME_H, FRAME_W, SHEET_DIRS, SHEET_H, SHEET_W, TILE, sheetRow,
   type AnimName, type SheetDir,
 } from "../shared/src/spec.js";
-import { ENV_RAMPS, FIXED_COLORS, KEY_RAMPS, masterPalette } from "../shared/src/palette.js";
+import { ENV_RAMPS, FIXED_COLORS, KEY_RAMPS, hexToRgb, masterPalette } from "../shared/src/palette.js";
 import type { ItemRegistry } from "../shared/src/avatar.js";
-import { TERRAIN, TERRAIN_COUNT, LIBRARY_FLOORS } from "./lib/env.js";
+import { CHAIR_COLORS, TERRAIN, TERRAIN_COUNT, LIBRARY_FLOORS } from "./lib/env.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "client/public/assets");
@@ -1023,6 +1023,16 @@ function terrainTileset(): Canvas {
         c.set(ox + x, oy + y, band ? r[2]! : r[3]!);
       }
   }
+  // department carpets (private office): two close tones and one weave per department, same softness as the lavender carpet
+  const carpet = (id: number, base: string, tone: string, weave: (x: number, y: number) => boolean) => {
+    const { ox, oy } = at(id);
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) c.set(ox + x, oy + y, weave(x, y) ? tone : base);
+  };
+  carpet(TERRAIN.floorHq, "#efd1a2", "#f9dbc2", (x, y) => (Math.abs((x % 16) - 8) + Math.abs((y % 16) - 8)) % 8 < 2); // amber, diamond lattice
+  carpet(TERRAIN.floorSales, "#f3a7a0", "#f9dbc2", (x, y) => (x + y) % 16 === 0 || (x + y) % 16 === 1 || (x - y + 32) % 16 === 8); // coral, wide lattice
+  carpet(TERRAIN.floorMarketing, "#90d6f1", "#b5dfd6", (x, y) => (x % 8 < 2 && y % 8 < 2) || ((x + 4) % 8 < 2 && (y + 4) % 8 < 2)); // sky blue, dots
+  carpet(TERRAIN.floorFinance, "#abd8b5", "#97c5a0", (x, y) => (Math.floor(x / 8) + Math.floor(y / 8)) % 2 === 0); // mint, check
+  carpet(TERRAIN.floorLegal, "#c4c6d8", "#b2bdce", (x, y) => (Math.floor(y / 8) % 2 ? x % 8 === 0 : x % 8 === 4) || y % 8 === 7); // slate, brick weave
   // lavender-white tiles with a soft rosette
   {
     const { ox, oy } = at(TERRAIN.tileFloor);
@@ -1170,6 +1180,26 @@ function main() {
     const dst = path.join(OUT, "furniture", p.file);
     fs.mkdirSync(path.dirname(dst), { recursive: true });
     fs.copyFileSync(path.join(ROOT, "art/props", p.file), dst);
+  }
+  // Department chairs: the office chair in each department's color (same pixels, its three shades swapped).
+  const chair = lib.props.find((p) => p.name === "office_chair");
+  if (chair) {
+    const src = Canvas.load(path.join(ROOT, "art/props", chair.file));
+    const shades = ["#30325b", "#4b5062", "#626f7b"].map((h) => hexToRgb(h).join(","));
+    for (const [name, colors] of Object.entries(CHAIR_COLORS)) {
+      const out = new Canvas(src.w, src.h);
+      for (let y = 0; y < src.h; y++)
+        for (let x = 0; x < src.w; x++) {
+          const i = (y * src.w + x) * 4;
+          if (!src.data[i + 3]) continue;
+          const shade = shades.indexOf([src.data[i], src.data[i + 1], src.data[i + 2]].join(","));
+          if (shade < 0) throw new Error(`office_chair has a color outside its three shades at ${x},${y}`);
+          out.set(x, y, colors[shade]!);
+        }
+      const file = chair.file.replace(/\.png$/, `_${name}.png`);
+      out.save(path.join(OUT, "furniture", file));
+      lib.props.push({ ...chair, name: `office_chair_${name}`, file });
+    }
   }
   fs.writeFileSync(
     path.join(OUT, "furniture/furniture.json"),

@@ -7,10 +7,12 @@
  *   /reset-password                     choosing a new password (from the reset email)
  *   /onboarding                         signed in, questions not answered yet
  *   /play  /play/<lobby>                in the town
+ *   /studio/<lobby>                     editing your office (your own lobby only)
  *
  * A private lobby rides along as `?lobby=<code>` on the auth/onboarding paths, so an invite link
  * survives sign-in (OAuth and email links come back to the URL they left from).
  */
+import { MAIN_LOBBY } from "@ft/shared";
 import { store, type Session } from "./state/store";
 
 export type AuthMode = "signIn" | "signUp" | "reset";
@@ -19,6 +21,9 @@ export const AUTH_PATHS: Record<AuthMode, string> = { signIn: "/login", signUp: 
 const RECOVERY_PATH = "/reset-password";
 const ONBOARDING_PATH = "/onboarding";
 export const PLAY_PATH = "/play";
+export const STUDIO_PATH = "/studio";
+/** The page was opened on a studio link: the studio opens once we are in that lobby (`main.tsx`). */
+export const openedOnStudio = location.pathname.startsWith(`${STUDIO_PATH}/`);
 
 const path = () => location.pathname.replace(/\/+$/, "") || "/";
 
@@ -29,9 +34,9 @@ export function authModeFromUrl(): AuthMode {
   return (Object.keys(AUTH_PATHS) as AuthMode[]).find((m) => AUTH_PATHS[m] === p) ?? "signIn";
 }
 
-/** Lobby code in the URL: `/play/<code>`, else `?lobby=<code>` (auth/onboarding paths, old links). */
+/** Lobby code in the URL: `/play/<code>` or `/studio/<code>`, else `?lobby=<code>` (auth/onboarding paths, old links). */
 export function lobbyCodeFromUrl(): string | null {
-  const m = /^\/play\/([^/]+)$/.exec(path());
+  const m = /^\/(?:play|studio)\/([^/]+)$/.exec(path());
   return m?.[1] ? decodeURIComponent(m[1]) : new URLSearchParams(location.search).get("lobby");
 }
 
@@ -52,16 +57,26 @@ function sync(status: Session["status"]) {
   if (status === "signedOut") return go(AUTH_PATHS[authModeFromUrl()]);
   if (status === "recovery") return go(RECOVERY_PATH);
   if (status === "onboarding") return go(ONBOARDING_PATH);
-  // ready: the room puts the exact lobby in the URL once joined (`lobbyUrl`); until then /play[/code].
-  if (!path().startsWith(PLAY_PATH)) go(PLAY_PATH);
+  // ready: `place()` puts the exact lobby in the URL once joined; until then /play[/code] (or the studio link we came in on).
+  if (!path().startsWith(PLAY_PATH) && !path().startsWith(STUDIO_PATH)) go(PLAY_PATH);
 }
 
-/** Keep the address bar on the path for the current session status. */
+/** In the town: the address names the lobby we are in, and the studio while it is open. */
+function place() {
+  const { session, net, view } = store.get();
+  if (session.status !== "ready" || net.status !== "online") return;
+  const main = net.lobby === MAIN_LOBBY;
+  const url = view === "studio" && !main ? `${STUDIO_PATH}/${net.lobby}` : main ? PLAY_PATH : `${PLAY_PATH}/${net.lobby}`;
+  if (url !== location.pathname + location.search) history.replaceState(null, "", url);
+}
+
+/** Keep the address bar on the path for the current session status (and lobby). */
 export function startRouter() {
   let last: Session["status"] | null = null;
   const check = () => {
     const status = store.get().session.status;
     if (status !== last) sync((last = status));
+    place();
   };
   store.subscribe(check);
   check();

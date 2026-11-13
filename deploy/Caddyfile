@@ -13,7 +13,7 @@
 	redir @www https://thefoundertown.com{uri} permanent
 
 	# Game client routes all serve the client page; it shows the screen for the session (client/src/router.ts).
-	@app path /login /signup /forgot-password /reset-password /onboarding /play /play/*
+	@app path /login /signup /forgot-password /reset-password /onboarding /play /play/* /studio/*
 	rewrite @app /app/index.html
 
 	# Pages always revalidate; hashed bundles can be cached for good.

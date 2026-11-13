@@ -17,6 +17,8 @@ export class CharacterView {
   readonly label: NameTag;
   private tex: string | null = null;
   private appearance = "";
+  /** False while characters are out of the picture (the studio shows the office alone). */
+  private shown = true;
 
   constructor(
     private scene: Phaser.Scene,
@@ -36,7 +38,7 @@ export class CharacterView {
     ensureAvatarTexture(this.scene, this.character.avatar, this.registry).then((tex) => {
       if (key !== this.appearance || !this.sprite.active) return; // superseded
       this.tex = tex;
-      this.sprite.setTexture(tex).setVisible(true);
+      this.sprite.setTexture(tex).setVisible(this.shown);
       this.sprite.anims.stop();
     });
   }
@@ -45,6 +47,14 @@ export class CharacterView {
   onClick(cb: () => void) {
     this.label.onClick(cb);
     this.sprite.setInteractive({ hitArea: BODY, hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true }).on("pointerdown", cb);
+  }
+
+  /** Show or hide the character and its name tag. */
+  setShown(on: boolean) {
+    if (on === this.shown) return;
+    this.shown = on;
+    this.sprite.setVisible(on && !!this.tex);
+    this.label.setShown(on);
   }
 
   /** Feet position in world pixels. */

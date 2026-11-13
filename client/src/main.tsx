@@ -3,9 +3,10 @@ import { createGame } from "./game/createGame";
 import { joinLobby, lobbyFromUrl } from "./net/room";
 import { initSession } from "./net/session";
 import { startVoice } from "./net/voice";
-import { startRouter } from "./router";
+import { openedOnStudio, startRouter } from "./router";
 import { startReminders } from "./state/calendar";
 import { store } from "./state/store";
+import { canEditOffice, enterStudio } from "./state/studio";
 import { App } from "./ui/App";
 import "./ui/styles.css";
 
@@ -21,6 +22,14 @@ function start() {
   startVoice();
   startReminders();
   void joinLobby(invitedTo);
+  // A studio link (/studio/<lobby>) opens the studio once we are in that lobby — if it is ours.
+  if (openedOnStudio) {
+    const stop = store.watch((s) => s.net.status === "online" && !!s.build && s.ready, (there) => {
+      if (!there) return;
+      stop();
+      if (canEditOffice() && store.get().net.lobby === invitedTo) enterStudio();
+    });
+  }
   // Expose for debugging / automated tests.
   (window as unknown as { __game: unknown }).__game = game;
 }

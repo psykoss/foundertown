@@ -14,6 +14,7 @@ export class BootScene extends Phaser.Scene {
     this.load.json("items", A + "characters/items.json");
     this.load.json("furniture", A + "furniture/furniture.json");
     this.load.tilemapTiledJSON("town", A + "maps/town.tmj");
+    this.load.tilemapTiledJSON("office", A + "maps/office.tmj"); // private lobbies (keys = `MapName`)
     this.load.image("tiles:terrain", A + "tilesets/terrain.png");
   }
 

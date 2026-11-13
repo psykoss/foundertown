@@ -56,6 +56,10 @@ export class NameTag {
     this.el.classList.toggle("speaking", on);
   }
 
+  setShown(on: boolean) {
+    this.el.hidden = !on;
+  }
+
   /** Make the tag clickable (e.g. the player's own tag opens their profile). */
   onClick(cb: () => void) {
     this.el.classList.add("clickable");

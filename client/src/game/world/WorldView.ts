@@ -3,7 +3,7 @@
  *   ground layers: < 0   |   furniture + characters: depth = feet/base y   |   above: 2_000_000
  */
 import Phaser from "phaser";
-import { TILE, type TiledMap, type WorldData } from "@ft/shared";
+import { TILE, type WorldData } from "@ft/shared";
 
 export const DEPTH_ABOVE = 2_000_000;
 export const DEPTH_DEBUG = 3_000_000;
@@ -42,11 +42,16 @@ function extrudedTileset(scene: Phaser.Scene, key: string): string {
   return out;
 }
 
+/** Under the walls and rugs, over the map's own ground: the carpets of the office layout. */
+const DEPTH_SPACES = -25;
+
 export class WorldView {
   readonly map: Phaser.Tilemaps.Tilemap;
-  readonly furniture: Phaser.GameObjects.Image[] = [];
+  private spaces: Phaser.Tilemaps.TilemapLayer | null;
+  private furniture: Phaser.GameObjects.Image[] = [];
 
-  constructor(scene: Phaser.Scene, mapKey: string, raw: TiledMap, world: WorldData) {
+  /** Draws the map's tile layers; `setWorld` adds everything that can change (office floors, furniture). */
+  constructor(private scene: Phaser.Scene, mapKey: string) {
     this.map = scene.make.tilemap({ key: mapKey });
     const terrain = this.map.addTilesetImage("terrain", extrudedTileset(scene, "tiles:terrain"), TILE, TILE, 1, 2);
     if (!terrain) throw new Error("terrain tileset missing");
@@ -54,14 +59,26 @@ export class WorldView {
     const under: [string, number][] = [["ground", -30], ["ground_detail", -20], ["walls", -10]];
     for (const [name, depth] of under) this.map.createLayer(name, terrain, 0, 0)?.setDepth(depth);
     this.map.createLayer("above", terrain, 0, 0)?.setDepth(DEPTH_ABOVE);
+    this.spaces = this.map.createBlankLayer("spaces", terrain, 0, 0)?.setDepth(DEPTH_SPACES) ?? null;
+  }
 
-    for (const f of world.furniture) {
-      const img = scene.add.image(f.x, f.y, `furn:${f.image.replace(/\.png$/, "")}`).setOrigin(0, 1);
+  /** Redraw what the world data describes on top of the map: the floor of every space, and all furniture. */
+  setWorld(world: WorldData) {
+    this.spaces?.fill(-1);
+    for (const s of world.spaces) if (s.floor) this.spaces?.fill(s.floor, s.x, s.y, s.w, s.h);
+
+    for (const img of this.furniture) img.destroy();
+    this.furniture = world.furniture.map((f) => {
+      const img = this.scene.add.image(f.x, f.y, `furn:${f.image.replace(/\.png$/, "")}`).setOrigin(0, 1);
       // base y — same rule as characters' feet; rugs lie under everything; counter items sit above their counter
-      img.setDepth(f.layer === "floor" ? -5 : f.y + f.z);
-      this.furniture.push(img);
-    }
-    void raw;
+      return img.setDepth(f.layer === "floor" ? -5 : f.y + f.z);
+    });
+  }
+
+  destroy() {
+    for (const img of this.furniture) img.destroy();
+    this.furniture = [];
+    this.map.destroy();
   }
 
   get widthPx() {

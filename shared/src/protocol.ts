@@ -4,6 +4,7 @@
  */
 import type { Avatar } from "./avatar.js";
 import type { FounderProfile } from "./founder.js";
+import type { OfficeLayout } from "./office.js";
 import type { Dir } from "./spec.js";
 
 /** Colyseus room name. One room instance per lobby (and more when a lobby is full). */
@@ -17,6 +18,15 @@ export function isLobby(code: unknown): code is string {
   return code === MAIN_LOBBY || (typeof code === "string" && LOBBY_CODE.test(code));
 }
 
+/**
+ * Map a lobby plays on: the main lobby is the town; a private lobby is its owner's office, an open
+ * floor that starts empty and is furnished by the owner's layout (`office.ts`).
+ */
+export type MapName = "town" | "office";
+export function mapOf(lobby: string): MapName {
+  return lobby === MAIN_LOBBY ? "town" : "office";
+}
+
 /** Sent with joinOrCreate. */
 export interface JoinOptions {
   lobby: string;
@@ -27,6 +37,8 @@ export interface JoinOptions {
   founder: FounderProfile;
   /** Rejoining after a dropped connection: stand where you were instead of at the spawn. */
   at?: { x: number; y: number };
+  /** Guest mode only (no database): the layout this browser saved for its own lobby. */
+  office?: OfficeLayout;
 }
 
 /** A player as synced in the room state (`state.players`, keyed by session id). */
@@ -58,6 +70,8 @@ export const MSG = {
   rtc: "rtc",
   /** both ways, relayed: video-call handshake between two players. */
   call: "call",
+  /** c→s, lobby owner only: the office layout changed (the room state's `office` carries it to everyone). */
+  office: "office",
 } as const;
 
 export interface MoveMsg { x: number; y: number; dir: Dir }
