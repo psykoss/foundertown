@@ -215,15 +215,16 @@ interface Placement {
 
 const DESK_W = 3;
 /**
- * What stands on every desk: two monitors at the back facing the chair, the computer front left,
- * the mouse on its mat front right. `left` = px from the left edge of the desk's three tiles to the
+ * What stands on every desk: two monitors at the back angled toward the chair, the computer front
+ * left, the keyboard in front of the chair, the mouse on its mat front right. `left` = px from the left edge of the desk's three tiles to the
  * prop's left edge; `dy` = px from the desk's base line up to the prop's base; `z` puts it over the desk.
  * The same list furnishes the desks of the town map (scripts/gen-map.ts).
  */
 export const DESK_SETUP: { prop: string; left: number; dy: number; z: number }[] = [
   { prop: "dual_monitor", left: 21, dy: -26, z: 30 },
   { prop: "mac_mini", left: 13, dy: -14, z: 30 },
-  { prop: "mouse_mat", left: 56, dy: -12, z: 30 },
+  { prop: "keyboard", left: 36, dy: -14, z: 30 },
+  { prop: "mouse_mat", left: 61, dy: -12, z: 30 },
 ];
 /** A desk with its chair: 3 tiles wide, 2 deep (desk row, then the chair row). */
 const STATION_H = 2;
@@ -242,7 +243,7 @@ function arrange(dept: Department, w: number, h: number): Placement[] {
     put("desk", tx, ty, DESK_W);
     for (const item of DESK_SETUP) out.push({ prop: item.prop, tx, ty, span: DESK_W, left: item.left, dy: item.dy, dx: 0, z: item.z });
     put(dept.chair, tx, ty + 1, DESK_W, -6);
-    if (desks++ % 3 === 0) put("plant_pot", tx + 2, ty, 1, -22, 4, 30);
+    if (desks++ % 3 === 0) put("plant_pot", tx + 2, ty, 1, -26, 4, 30); // back right corner, behind the mouse mat
   };
   /** How many stations fit side by side / one below the other with `gap` free tiles between them. */
   const across = (gap: number) => Math.max(1, Math.floor((w - 2 + gap) / (DESK_W + gap)));

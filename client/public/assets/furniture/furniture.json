@@ -216,7 +216,7 @@
   "name": "dual_monitor",
   "file": "office/dual_monitor.png",
   "w": 55,
-  "h": 22,
+  "h": 25,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
@@ -226,6 +226,15 @@
   "file": "office/mac_mini.png",
   "w": 13,
   "h": 10,
+  "footprintW": 0,
+  "footprintH": 0,
+  "layer": ""
+ },
+ {
+  "name": "keyboard",
+  "file": "office/keyboard.png",
+  "w": 23,
+  "h": 8,
   "footprintW": 0,
   "footprintH": 0,
   "layer": ""
