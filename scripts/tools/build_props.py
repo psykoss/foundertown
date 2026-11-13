@@ -128,12 +128,15 @@ def box(key, b, uploads):
     x, y, w, h = b
     return trim(im.crop((x, y, x + w, y + h)))
 
+# Props a character can sit on → the direction they face while seated (written as "seat" in props.json).
+SEATS = {"office_chair": "up"}
+
 # name, room, source, scale, footprint (tiles w,h), extra
 # source: ("c", sheet, id) component | ("b", sheet, (x,y,w,h)) box | ("sub", sheet, id, (x,y,w,h)) box inside a component
 MANIFEST = [
     # ── office ──
     ("desk", "office", ("desk_part", "desk"), 1, (3, 1)),
-    ("office_chair", "office", ("desk_part", "chair"), 1, (1, 1)),
+    ("office_chair", "office", ("desk_part", "chair"), 1, (0, 0)),  # a seat (SEATS): stepped onto, not blocked
     ("plant_tree", "office", ("c", "interiors", 130), 2, (1, 1)),
     ("plant_small", "office", ("c", "interiors", 134), 2, (1, 1)),
     ("plant_desk", "office", ("c", "interiors", 148), 2, (1, 1)),
@@ -340,6 +343,7 @@ def main(uploads):
         rel = f"{room}/{name}.png"
         im.save(os.path.join(out_dir, rel))
         meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})
+        if name in SEATS: meta[-1]["seat"] = SEATS[name]
     for name, im, fp in [g for g in gather_shelves(uploads) if g[0] in KEEP]:
         rel = f"office/{name}.png"; im.save(os.path.join(out_dir, rel))
         meta.append({"name": name, "file": rel, "w": im.width, "h": im.height, "footprintW": fp[0], "footprintH": fp[1]})

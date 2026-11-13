@@ -1174,7 +1174,7 @@ function main() {
   save(terrainTileset(), "tilesets/terrain.png");
   // Prop library (art/props, built by scripts/tools/build_props.py) → assets/furniture + manifest
   const lib = JSON.parse(fs.readFileSync(path.join(ROOT, "art/props/props.json"), "utf8")) as {
-    props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number }[];
+    props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number; seat?: string }[];
   };
   for (const p of lib.props) {
     const dst = path.join(OUT, "furniture", p.file);

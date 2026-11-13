@@ -62,7 +62,7 @@ One item can use several layers (long hair = `hair_back` + `hair_front`).
 | ground_detail | tiles | rugs, decals |
 | walls | tiles | wall caps + 3/4 wall faces, hedges |
 | collision | tiles (hidden) | any tile = blocked |
-| objects | tile objects | furniture from the `furniture` image-collection tileset; y-sorted with characters; tile props `footprintW/H` block tiles automatically |
+| objects | tile objects | furniture from the `furniture` image-collection tileset; y-sorted with characters; tile props `footprintW/H` block tiles automatically; `seat` (a direction) makes a prop a chair you sit on, facing that way |
 | above | tiles | always over characters (roof edges, tree tops) |
 | markers | objects | `spawn` points, `zone` rectangles (`kind` prop: room, pills…) |
 

@@ -3,7 +3,7 @@
  * The map is DATA: rooms, collisions, spawns, portals and furniture all come from Tiled.
  */
 import { CollisionGrid } from "./grid.js";
-import { TILE } from "./spec.js";
+import { DIRS, TILE, type Dir } from "./spec.js";
 
 export interface TiledProperty {
   name: string;
@@ -90,6 +90,30 @@ export interface FurnitureInstance {
   layer: string;
   /** depth offset in px (e.g. items standing on a counter) */
   z: number;
+  /** A chair: the direction someone sitting on it faces ("" = not a seat). Seats have no footprint. */
+  seat: Dir | "";
+}
+
+/** Somewhere to sit: standing still on this tile, a character sits down. */
+export interface Seat {
+  /** Tile the seat is on. */
+  x: number;
+  y: number;
+  /** Facing while seated. */
+  dir: Dir;
+  /** Depth (px) of the chair itself — the sitter is drawn just behind or in front of it. */
+  depth: number;
+}
+
+/** Tile property `seat` (a direction) of a prop, or "" if it is not one. */
+export function seatDir(value: unknown): Dir | "" {
+  return DIRS.includes(value as Dir) ? (value as Dir) : "";
+}
+
+/** The seat a piece of furniture offers, on the tile under its base. */
+export function seatOf(f: FurnitureInstance): Seat | null {
+  if (!f.seat) return null;
+  return { x: Math.floor((f.x + f.width / 2) / TILE), y: Math.floor((f.y - 1) / TILE), dir: f.seat, depth: f.y + f.z };
 }
 
 export interface Spawn {
@@ -134,6 +158,8 @@ export interface WorldData {
   build: Rect | null;
   /** Spaces of the office layout laid over the map (`buildWorld`); a bare map has none. */
   spaces: PlacedSpace[];
+  /** Chairs (from the map and from the office layout). Their tiles are also marked in the grid. */
+  seats: Seat[];
 }
 
 function tileForGid(map: TiledMap, gid: number): { ts: TiledTileset; tile?: TiledTile } | null {
@@ -164,6 +190,7 @@ export function parseWorld(map: TiledMap): WorldData {
   const furniture: FurnitureInstance[] = [];
   const spawns: Spawn[] = [];
   const zones: Zone[] = [];
+  const seats: Seat[] = [];
   let build: Rect | null = null;
 
   for (const layer of map.layers) {
@@ -178,7 +205,13 @@ export function parseWorld(map: TiledMap): WorldData {
         const image = hit.tile.image.split("/").pop()!;
         const layer = prop(hit.tile.properties, "layer", "");
         const z = prop(o.properties, "z", 0);
-        furniture.push({ id: o.id, image, x: o.x, y: o.y, width: o.width, height: o.height, footprint: { w: fw, h: fh }, layer, z });
+        const piece: FurnitureInstance = { id: o.id, image, x: o.x, y: o.y, width: o.width, height: o.height, footprint: { w: fw, h: fh }, layer, z, seat: seatDir(prop<string>(hit.tile.properties, "seat", "")) };
+        furniture.push(piece);
+        const seat = seatOf(piece);
+        if (seat) {
+          seats.push(seat);
+          grid.setSeat(seat.x, seat.y);
+        }
         const tx = Math.round(o.x / TILE);
         const tyBottom = Math.round(o.y / TILE) - 1;
         grid.blockRect(tx, tyBottom - fh + 1, fw, fh);
@@ -192,5 +225,5 @@ export function parseWorld(map: TiledMap): WorldData {
     }
   }
 
-  return { width: map.width, height: map.height, grid, furniture, spawns, zones, build, spaces: [] };
+  return { width: map.width, height: map.height, grid, furniture, spawns, zones, build, spaces: [], seats };
 }

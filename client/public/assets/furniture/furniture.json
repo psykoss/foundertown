@@ -13,8 +13,9 @@
   "file": "office/office_chair.png",
   "w": 22,
   "h": 20,
-  "footprintW": 1,
-  "footprintH": 1,
+  "footprintW": 0,
+  "footprintH": 0,
+  "seat": "up",
   "layer": ""
  },
  {
@@ -166,8 +167,9 @@
   "file": "office/office_chair_amber.png",
   "w": 22,
   "h": 20,
-  "footprintW": 1,
-  "footprintH": 1,
+  "footprintW": 0,
+  "footprintH": 0,
+  "seat": "up",
   "layer": ""
  },
  {
@@ -175,8 +177,9 @@
   "file": "office/office_chair_coral.png",
   "w": 22,
   "h": 20,
-  "footprintW": 1,
-  "footprintH": 1,
+  "footprintW": 0,
+  "footprintH": 0,
+  "seat": "up",
   "layer": ""
  },
  {
@@ -184,8 +187,9 @@
   "file": "office/office_chair_blue.png",
   "w": 22,
   "h": 20,
-  "footprintW": 1,
-  "footprintH": 1,
+  "footprintW": 0,
+  "footprintH": 0,
+  "seat": "up",
   "layer": ""
  },
  {
@@ -193,8 +197,9 @@
   "file": "office/office_chair_green.png",
   "w": 22,
   "h": 20,
-  "footprintW": 1,
-  "footprintH": 1,
+  "footprintW": 0,
+  "footprintH": 0,
+  "seat": "up",
   "layer": ""
  },
  {
@@ -202,8 +207,9 @@
   "file": "office/office_chair_grey.png",
   "w": 22,
   "h": 20,
-  "footprintW": 1,
-  "footprintH": 1,
+  "footprintW": 0,
+  "footprintH": 0,
+  "seat": "up",
   "layer": ""
  }
 ]

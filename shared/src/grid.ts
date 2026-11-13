@@ -5,12 +5,23 @@ export class CollisionGrid {
   private readonly blocked: Uint8Array;
   /** Thin walls on tile edges: bit 1 = wall on the WEST edge of the tile, bit 2 = wall on its NORTH edge. */
   private readonly edges: Uint8Array;
+  /** Tiles that hold a seat: free to step onto, but not somewhere a route passes through. */
+  private readonly seats: Uint8Array;
 
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
     this.blocked = new Uint8Array(width * height);
     this.edges = new Uint8Array(width * height);
+    this.seats = new Uint8Array(width * height);
+  }
+
+  setSeat(x: number, y: number): void {
+    if (this.inBounds(x, y)) this.seats[y * this.width + x] = 1;
+  }
+
+  isSeat(x: number, y: number): boolean {
+    return this.inBounds(x, y) && this.seats[y * this.width + x] === 1;
   }
 
   /** Put a thin wall on the west (between x-1 and x) or north (between y-1 and y) edge of a tile. */

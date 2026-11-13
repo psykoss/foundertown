@@ -227,9 +227,9 @@ describe("office", () => {
   const build = { x: 0, y: 3, w: 40, h: 23 };
   const space = (id: string, kind: string, x: number, y: number, w: number, h: number): Space => ({ id, kind, x, y, w, h });
   /** A bare office map: no tile layers, the prop and floor tilesets the layout needs, a 40×23 floor to build on. */
-  const prop = (id: number, name: string, w: number, h: number, fw: number, fh: number) => ({
+  const prop = (id: number, name: string, w: number, h: number, fw: number, fh: number, seat = "") => ({
     id, image: `../furniture/office/${name}.png`, imagewidth: w, imageheight: h,
-    properties: [{ name: "footprintW", type: "int", value: fw }, { name: "footprintH", type: "int", value: fh }],
+    properties: [{ name: "footprintW", type: "int", value: fw }, { name: "footprintH", type: "int", value: fh }, ...(seat ? [{ name: "seat", type: "string", value: seat }] : [])],
   });
   const map: TiledMap = {
     type: "map", orientation: "orthogonal", width: 40, height: 26, tilewidth: 32, tileheight: 32,
@@ -239,7 +239,7 @@ describe("office", () => {
     tilesets: [
       { firstgid: 1, name: "terrain", tilewidth: 32, tileheight: 32, tilecount: 32, columns: 8, tiles: DEPARTMENTS.map((d, i) => ({ id: 10 + i, properties: [{ name: "floor", type: "string", value: d.id }] })) },
       { firstgid: 33, name: "props", tilewidth: 160, tileheight: 160, tilecount: 5, columns: 0, tiles: [
-        prop(0, "desk", 85, 37, 3, 1), prop(1, "office_chair", 22, 20, 1, 1), prop(2, "plant_tree", 36, 62, 1, 1), prop(3, "plant_small", 28, 46, 1, 1), prop(4, "plant_pot", 11, 13, 0, 0),
+        prop(0, "desk", 85, 37, 3, 1), prop(1, "office_chair", 22, 20, 0, 0, "up"), prop(2, "plant_tree", 36, 62, 1, 1), prop(3, "plant_small", 28, 46, 1, 1), prop(4, "plant_pot", 11, 13, 0, 0),
       ] },
     ],
   };
@@ -309,10 +309,13 @@ describe("office", () => {
                 expect(world.grid.isBlocked(x, y)).toBe(true);
               }
           }
-          // every desk can be reached: the tile in front of its chair is free and connected to the floor outside
-          for (const desk of desks) {
-            const fp = footprintOf(desk);
-            expect(findPath(world.grid, { x: 0, y: 4 }, { x: fp.x, y: fp.y + 1 }), `${d.id} ${w}×${h}: desk at ${fp.x},${fp.y}`).not.toBeNull();
+          // every desk has its chair: a seat inside the space, on a free tile, that can be walked to from the floor outside
+          expect(world.seats.length, `${d.id} ${w}×${h}`).toBe(desks.length);
+          for (const seat of world.seats) {
+            expect(spaceAt([s], seat.x, seat.y), `${d.id} ${w}×${h}: seat at ${seat.x},${seat.y}`).toBe(s);
+            expect(taken.has(`${seat.x},${seat.y}`), `${d.id} ${w}×${h}: seat under furniture at ${seat.x},${seat.y}`).toBe(false);
+            expect(world.grid.isSeat(seat.x, seat.y)).toBe(true);
+            expect(findPath(world.grid, { x: 0, y: 4 }, seat), `${d.id} ${w}×${h}: seat at ${seat.x},${seat.y}`).not.toBeNull();
           }
         }
   });
@@ -324,7 +327,14 @@ describe("office", () => {
     expect(world.zones).toEqual([{ name: "Finance", kind: "space", x: 4 * TILE, y: 6 * TILE, width: 9 * TILE, height: 5 * TILE }]);
     // finance: two desks along the back; with no finance chair in this map the plain office chair stands in
     expect(world.furniture.filter((f) => f.image === "desk.png").map(footprintOf)).toEqual([{ x: 5, y: 7, w: 3, h: 1 }, { x: 9, y: 7, w: 3, h: 1 }]);
-    expect(world.furniture.filter((f) => f.image === "office_chair.png").map(footprintOf)).toEqual([{ x: 6, y: 8, w: 1, h: 1 }, { x: 10, y: 8, w: 1, h: 1 }]);
+    // each chair is a seat facing its desk, on the tile below the middle of the desk — free to step onto
+    const chairs = world.furniture.filter((f) => f.image === "office_chair.png");
+    expect(world.seats).toEqual([{ x: 6, y: 8, dir: "up", depth: chairs[0]!.y }, { x: 10, y: 8, dir: "up", depth: chairs[1]!.y }]);
+    expect(world.grid.isBlocked(6, 8)).toBe(false);
+    // a route goes around a chair, and onto it only when the chair is where you are going
+    expect(findPath(world.grid, { x: 5, y: 8 }, { x: 7, y: 8 })).toEqual([{ x: 5, y: 9 }, { x: 6, y: 9 }, { x: 7, y: 9 }, { x: 7, y: 8 }]);
+    expect(findPath(world.grid, { x: 5, y: 8 }, { x: 6, y: 8 })).toEqual([{ x: 6, y: 8 }]);
+    expect(findPath(world.grid, { x: 6, y: 8 }, { x: 7, y: 8 })).toEqual([{ x: 7, y: 8 }]); // standing up and walking off
     expect(world.grid.isBlocked(5, 7)).toBe(true);
     expect(world.grid.isBlocked(4, 7)).toBe(false);
     // someone under a desk is moved to the nearest free tile; someone on free floor stays

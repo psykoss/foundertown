@@ -13,7 +13,7 @@
 import Phaser from "phaser";
 import {
   TILE, buildWorld, findPath, mapOf, sanitizeAvatar, spaceAt,
-  type ItemRegistry, type MapName, type TiledMap, type WorldData,
+  type ItemRegistry, type MapName, type Seat, type TiledMap, type WorldData,
 } from "@ft/shared";
 import { sendMove } from "../../net/room";
 import { store, type RemotePlayer } from "../../state/store";
@@ -46,6 +46,8 @@ export class WorldScene extends Phaser.Scene {
   private mapName: MapName | null = null;
   private raw!: TiledMap;
   private view!: WorldView;
+  /** Chairs of the current world by tile ("x,y"). */
+  private seats = new Map<string, Seat>();
   private camera?: CameraControls;
   private player!: CharacterView;
   private items!: ItemRegistry;
@@ -135,6 +137,7 @@ export class WorldScene extends Phaser.Scene {
     }
     const preview = s.studio.preview;
     this.world = buildWorld(this.raw, preview?.layout ?? s.office);
+    this.seats = new Map(this.world.seats.map((s) => [`${s.x},${s.y}`, s]));
     this.view.setWorld(this.world);
     this.debug?.setWorld(this.world);
     if (!preview) this.publishPlan();
@@ -150,8 +153,8 @@ export class WorldScene extends Phaser.Scene {
       for (let x = 0; x < width; x++)
         for (const side of ["W", "N"] as const) if (grid.hasEdge(x, y, side)) edges.push({ x, y, side });
     const furniture = this.world.furniture
-      .filter((f) => f.footprint.w > 0 && f.footprint.h > 0)
-      .map((f) => ({ x: f.x / TILE, y: f.y / TILE - f.footprint.h, w: f.width / TILE, h: f.footprint.h }));
+      .filter((f) => (f.footprint.w > 0 && f.footprint.h > 0) || f.seat)
+      .map((f) => ({ x: f.x / TILE, y: f.y / TILE - (f.seat ? 1 : f.footprint.h), w: f.width / TILE, h: f.seat ? 1 : f.footprint.h }));
     store.set({ minimap: { width, height, walls, edges, furniture, spaces }, build });
   }
 
@@ -186,9 +189,13 @@ export class WorldScene extends Phaser.Scene {
       c.face(data.dir);
     }
 
-    // render
+    // render — whoever has come to rest on a chair's tile sits on it
+    this.player.setSeat(this.seatOf(me));
     this.player.update();
-    for (const { view } of this.remotes.values()) view.update();
+    for (const { view } of this.remotes.values()) {
+      view.setSeat(this.seatOf(view.character));
+      view.update();
+    }
     this.debug?.update([this.player.feet(), ...[...this.remotes.values()].map((r) => r.view.feet())]);
     const { view: page, studio, office, build } = store.get();
     const editing = page === "studio";
@@ -208,6 +215,12 @@ export class WorldScene extends Phaser.Scene {
       const dept = spaceAt(this.world.spaces, t.x, t.y)?.kind ?? null;
       store.set((s) => ({ hud: { ...s.hud, fps: Math.round(this.game.loop.actualFps), tileX: t.x, tileY: t.y, zone: zone?.name ?? null, dept } }));
     }
+  }
+
+  /** The chair a character is sitting on: it stands still on the chair's tile, with nowhere left to walk. */
+  private seatOf(c: Character): Seat | null {
+    const w = c.walker;
+    return w.moving || c.path.length ? null : (this.seats.get(`${w.tileX},${w.tileY}`) ?? null);
   }
 
   /** Bring the remote characters in line with `store.players`: add, remove, retarget, restyle. */

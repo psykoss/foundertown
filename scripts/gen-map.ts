@@ -88,7 +88,7 @@ function generate(name: string, W: number, H: number, draw: (m: Builder) => void
   }
 
   // ── props ──
-  const lib: { props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number; layer?: string }[] } = {
+  const lib: { props: { name: string; file: string; w: number; h: number; footprintW: number; footprintH: number; layer?: string; seat?: string }[] } = {
     props: JSON.parse(fs.readFileSync(path.join(ASSETS, "furniture/furniture.json"), "utf8")),
   };
   const byName = new Map(lib.props.map((p, i) => [p.name, { ...p, gid: FIRST_FURN + i }]));
@@ -187,6 +187,7 @@ function generate(name: string, W: number, H: number, draw: (m: Builder) => void
             { name: "footprintW", type: "int", value: m.footprintW },
             { name: "footprintH", type: "int", value: m.footprintH },
             ...(m.layer ? [{ name: "layer", type: "string", value: m.layer }] : []),
+            ...(m.seat ? [{ name: "seat", type: "string", value: m.seat }] : []), // sat on, facing this way
           ],
         })),
       } as TiledMap["tilesets"][number],

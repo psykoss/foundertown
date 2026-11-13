@@ -7,7 +7,8 @@
  * The layout is the only thing stored (`OfficeLayout`); the furniture of a space is derived from its
  * department and size (`furnish`), because spaces can be resized freely.
  */
-import { parseWorld, prop, type FurnitureInstance, type Rect, type TiledMap, type WorldData } from "./map.js";
+import { parseWorld, prop, seatDir, seatOf, type FurnitureInstance, type Rect, type TiledMap, type WorldData } from "./map.js";
+import type { Dir } from "./spec.js";
 import { TILE } from "./spec.js";
 
 /** How a department arranges its desks (see `furnish`). */
@@ -166,6 +167,8 @@ export interface PropInfo {
   h: number;
   footprint: { w: number; h: number };
   layer: string;
+  /** Facing of someone sitting on it ("" = not a seat). */
+  seat: Dir | "";
 }
 
 /** The props a map can place, and the terrain tile (gid) of each department's floor. */
@@ -188,6 +191,7 @@ export function mapLibrary(map: TiledMap): MapLibrary {
         name: image.replace(/\.png$/, ""), image, path: t.image, w, h: t.imageheight ?? 0,
         footprint: { w: prop(t.properties, "footprintW", Math.round(w / TILE)), h: prop(t.properties, "footprintH", 1) },
         layer: prop(t.properties, "layer", ""),
+        seat: seatDir(prop<string>(t.properties, "seat", "")),
       });
     }
   return { props, floors };
@@ -212,6 +216,7 @@ const STATION_H = 2;
 /**
  * The furniture of a `w`×`h` space of a department, in tiles relative to the space. The outer ring
  * of tiles carries nothing but corner plants, so spaces can touch and still be walked around.
+ * Chairs are seats: nothing blocks their tile, and standing on it sits you down at the desk.
  */
 function arrange(dept: Department, w: number, h: number): Placement[] {
   const out: Placement[] = [];
@@ -328,6 +333,7 @@ export function furnish(space: Space, lib: MapLibrary, firstId = 0): FurnitureIn
       footprint: info.footprint,
       layer: info.layer,
       z: p.z,
+      seat: info.seat,
     });
   }
   return out;
@@ -352,6 +358,11 @@ export function buildWorld(map: TiledMap, layout: OfficeLayout = EMPTY_OFFICE): 
       world.furniture.push(f);
       const fp = footprintOf(f);
       world.grid.blockRect(fp.x, fp.y, fp.w, fp.h);
+      const seat = seatOf(f);
+      if (seat) {
+        world.seats.push(seat);
+        world.grid.setSeat(seat.x, seat.y);
+      }
     }
     world.spaces.push({ ...space, floor: lib.floors.get(dept.id) ?? 0 });
     world.zones.push({ name: dept.label, kind: "space", x: space.x * TILE, y: space.y * TILE, width: space.w * TILE, height: space.h * TILE });

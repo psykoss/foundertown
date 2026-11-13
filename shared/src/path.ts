@@ -5,7 +5,11 @@ export interface TilePos {
   y: number;
 }
 
-/** 4-directional BFS. Returns the path EXCLUDING the start, or null if unreachable. */
+/**
+ * 4-directional BFS. Returns the path EXCLUDING the start, or null if unreachable.
+ * Seats are walked around: a route only steps onto one when it is the goal (you walk to a chair to
+ * sit on it, not across it).
+ */
 export function findPath(grid: CollisionGrid, start: TilePos, goal: TilePos, maxNodes = 4000): TilePos[] | null {
   if (grid.isBlocked(goal.x, goal.y)) return null;
   if (start.x === goal.x && start.y === goal.y) return [];
@@ -28,6 +32,7 @@ export function findPath(grid: CollisionGrid, start: TilePos, goal: TilePos, max
       const ny = cy + dy;
       if (!grid.canStep(cx, cy, nx, ny)) continue;
       const ni = ny * w + nx;
+      if (ni !== goalIdx && grid.isSeat(nx, ny)) continue;
       if (prev[ni] !== -1) continue;
       prev[ni] = cur;
       queue.push(ni);
